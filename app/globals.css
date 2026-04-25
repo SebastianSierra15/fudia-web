@@ -1,26 +1,106 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-medium: 500;
+  --font-weight-regular: 400;
+  --font-size-header: 16px;
+  --font-size-name: 18px;
+  --font-size-email: 12px;
+  --font-size-section: 11px;
+  --font-size-option: 13px;
+  --font-size-subtitle: 11px;
+
+  --color-screen: #f3f4f6;
+  --color-card: #f8f9fb;
+  --color-back: #eceff3;
+  --color-text-primary: #111a35;
+  --color-text-secondary: #6f7583;
+  --color-text-tertiary: #9aa1b1;
+
+  --color-accent-avatar: #7c3aed;
+  --color-accent-edit-bg: #d8efb7;
+  --color-accent-edit-text: #111a35;
+  --color-accent-badge-bg: #fce8c3;
+  --color-accent-badge-text: #b45309;
+  --color-accent-link: #a3e467;
+  --color-accent-switch-on: #b6f075;
+  --color-accent-switch-off: #dde3ec;
+  --color-accent-logout: #f59e0b;
+
+  --color-bg: var(--color-screen);
+  --color-fg: var(--color-text-primary);
+  --color-muted: var(--color-text-secondary);
+  --color-muted-2: var(--color-text-tertiary);
+  --color-surface: var(--color-card);
+  --color-surface-2: var(--color-back);
+  --color-border: var(--color-accent-switch-off);
+  --color-gradient: var(--color-back);
+  --color-tint: var(--color-accent-avatar);
+  --color-accent: var(--color-accent-switch-on);
+  --color-accent-strong: var(--color-accent-link);
+  --color-accent-soft: var(--color-accent-edit-bg);
+  --color-accent-contrast: var(--color-accent-edit-text);
+  --color-badge-bg: var(--color-accent-badge-bg);
+  --color-badge-text: var(--color-accent-badge-text);
+  --color-nav-border: #dbe1ea;
+
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-screen: #0f172a;
+    --color-card: #142332;
+    --color-back: #142332;
+    --color-text-primary: #f5f7fa;
+    --color-text-secondary: #9ca3af;
+    --color-text-tertiary: #6b7280;
+
+    --color-accent-edit-bg: #1e3a2a;
+    --color-accent-edit-text: #b6f075;
+    --color-accent-badge-bg: #3b2a12;
+    --color-accent-badge-text: #fbbf24;
+    --color-accent-link: #6cbf59;
+    --color-accent-switch-on: #b6f075;
+    --color-accent-switch-off: #1b2b3b;
+    --color-accent-logout: #f59e0b;
+    --color-accent-avatar: #7c3aed;
+    --color-accent-icon-bg: #1a2940;
+
+    --color-bg: var(--color-screen);
+    --color-fg: var(--color-text-primary);
+    --color-muted: var(--color-text-secondary);
+    --color-muted-2: var(--color-text-tertiary);
+    --color-surface: var(--color-card);
+    --color-surface-2: var(--color-accent-icon-bg);
+    --color-border: var(--color-accent-switch-off);
+    --color-gradient: var(--color-card);
+    --color-tint: var(--color-accent-edit-text);
+    --color-accent: var(--color-accent-switch-on);
+    --color-accent-strong: var(--color-accent-link);
+    --color-accent-soft: var(--color-accent-edit-bg);
+    --color-accent-contrast: #0b1510;
+    --color-badge-bg: var(--color-accent-badge-bg);
+    --color-badge-text: var(--color-accent-badge-text);
+    --color-nav-border: var(--color-gradient);
+
+    --background: var(--color-bg);
+    --foreground: var(--color-fg);
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-weight: var(--font-weight-regular);
 }

@@ -1,5 +1,203 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# AGENTS.md - Fudia Web App (Next.js)
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+These instructions apply to any developer or AI agent working on the **Fudia web application**.
+
+---
+
+## 1. Web App Purpose
+
+Fudia's web application is:
+
+> An **additional frontend for the same Fudia system**, not an independent system.
+
+It must:
+- Share the backend with the mobile app (Appwrite)
+- Use the same collections and business logic
+- Maintain full consistency in data and flows
+
+---
+
+## 2. Tech Stack
+
+### Web Frontend
+- Next.js (App Router)
+- TypeScript
+- Server Components + Server Actions
+- Tailwind CSS
+
+### Backend
+- Appwrite (Auth, Database, Storage, Functions)
+- Stripe (payments and subscriptions)
+
+---
+
+## 3. General Architecture
+
+Recommended structure:
+
+```text
+app/
+|-- (marketing)/
+|   |-- page.tsx
+|   |-- producto/
+|   |-- como-funciona/
+|   |-- precios/
+|
+|-- (auth)/
+|   |-- login/
+|   |-- register/
+|
+|-- (private)/
+|   |-- dashboard/
+|   |-- historial/
+|   |-- perfil/
+|   |-- billing/
+|
+|-- api/
+|   |-- auth/
+|   |-- stripe/
+|
+lib/
+|-- appwrite/
+|-- stripe/
+```
+
+---
+
+## 3.1. Component Structure (Atomic Design)
+
+- Use the **Atomic Design** pattern for components: `atoms`, `molecules`, `organisms`, `templates`
+- All layers must live inside `src/`
+- Inside `src/components/` there must be:
+  - One folder per page
+  - One `shared` folder for shared components
+- In each page folder and in `shared/`, these subfolders must exist:
+  - `atoms/`
+  - `molecules/`
+  - `organisms/`
+  - `templates/`
+- If a component can or should be used in more than one page, move it to `shared/` and generalize it
+
+---
+
+## 3.2. SEO (MANDATORY)
+
+- The title must be between 30 and 65 characters
+- The description must be between 120 and 300 characters
+- Each page must have one `h1` and a correct heading hierarchy
+- Add keywords
+- All images must have `alt` and `title`
+- Every link must have a `title`
+- Social metadata must be correct
+- Each page must have its own Open Graph image
+
+---
+
+## 4. Development Principles (MANDATORY)
+
+- Follow **SOLID** principles
+- Do not duplicate existing logic
+- Maintain separation of concerns
+- Write clear and maintainable code
+- Avoid unnecessary "clever" solutions
+
+---
+
+## 5. Security Rules
+
+- Never store tokens in `localStorage`
+- Use secure cookies (`httpOnly`)
+- Validate authentication on the server
+- Protect private routes from the backend
+- Never trust frontend data
+
+---
+
+## 6. Authentication
+
+- Use Appwrite Auth
+- Handle login from the server (Server Actions or API Routes)
+- Get the user from the active session
+- Logout must remove the current session
+
+---
+
+## 7. Payments
+
+- Use Stripe (DO NOT implement manual payments)
+- Create payment sessions from the server
+- Confirm payments only through webhooks
+- Verify webhook signatures
+- Update user state in the database
+
+---
+
+## 8. Separation of Responsibilities
+
+### Frontend
+- UI / UX
+- Navigation
+- Interface state
+- Backend calls
+
+### Backend (Appwrite / API Routes)
+- Business logic
+- Data validation
+- Payment handling
+- Persistence
+
+---
+
+## 9. Code and Typing
+
+- Use TypeScript strictly
+- Avoid `any`
+- Reuse existing types
+- Keep interfaces consistent
+
+---
+
+## 10. Comments
+
+- Write comments in Spanish
+- Only when they add value
+- Explain complex decisions
+- Do not comment obvious code
+
+---
+
+## 11. Conventions
+
+- Descriptive names
+- Reusable components
+- Hooks for shared logic
+- Separate logic from presentation
+
+---
+
+## 12. Middleware and Protection
+
+- Middleware for basic redirects
+- Real validation on the server
+- Do not rely only on the frontend
+
+---
+
+## 13. Philosophy
+
+Fudia prioritizes:
+- Security
+- Scalability
+- Clarity
+- Maintainable code
+
+---
+
+## 14. Mockup Copy Fidelity (MANDATORY)
+
+- Use the exact text from approved mockups by default.
+- Do not rewrite, summarize, or replace mockup copy unless the user explicitly asks for a text change.
+
+---
+
+This file is the main guide for the web application.
