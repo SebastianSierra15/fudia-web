@@ -1,16 +1,19 @@
-import { AppwriteException, Models, OAuthProvider } from "appwrite";
+﻿import { AppwriteException, Models, OAuthProvider } from "appwrite";
 import { getAppwriteAccount } from "./client";
 
 type LoginWithEmailResult =
   | { success: true }
   | { success: false; code: string; message: string };
 
+const GENERIC_LOGIN_ERROR_MESSAGE =
+  "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
+
 function mapLoginError(error: unknown): { code: string; message: string } {
   if (error instanceof AppwriteException) {
     if (error.code === 401 || error.type === "user_invalid_credentials") {
       return {
         code: "INVALID_CREDENTIALS",
-        message: "Correo o contraseña incorrectos.",
+        message: "Correo o contrasena incorrectos.",
       };
     }
 
@@ -24,26 +27,26 @@ function mapLoginError(error: unknown): { code: string; message: string } {
     if (error.code === 400) {
       return {
         code: "BAD_REQUEST",
-        message: "Revisa los datos ingresados e intenta nuevamente.",
+        message: GENERIC_LOGIN_ERROR_MESSAGE,
       };
     }
 
     return {
       code: error.type || "APPWRITE_ERROR",
-      message: error.message || "No se pudo iniciar sesión.",
+      message: GENERIC_LOGIN_ERROR_MESSAGE,
     };
   }
 
   if (error instanceof Error) {
     return {
       code: "UNEXPECTED_ERROR",
-      message: error.message || "No se pudo iniciar sesión.",
+      message: GENERIC_LOGIN_ERROR_MESSAGE,
     };
   }
 
   return {
     code: "UNKNOWN_ERROR",
-    message: "No se pudo iniciar sesión.",
+    message: GENERIC_LOGIN_ERROR_MESSAGE,
   };
 }
 

@@ -1,15 +1,16 @@
-import { Account, Client } from "appwrite";
+﻿import { Account, Client } from "appwrite";
 
 let accountInstance: Account | null = null;
+
+const GENERIC_CONFIG_ERROR_MESSAGE =
+  "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
 
 function getAppwriteConfig() {
   const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
   const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
 
   if (!endpoint || !projectId) {
-    throw new Error(
-      "Faltan variables NEXT_PUBLIC_APPWRITE_ENDPOINT o NEXT_PUBLIC_APPWRITE_PROJECT_ID.",
-    );
+    throw new Error(GENERIC_CONFIG_ERROR_MESSAGE);
   }
 
   return { endpoint, projectId };
@@ -28,4 +29,3 @@ export function getAppwriteAccount() {
   accountInstance = new Account(client);
   return accountInstance;
 }
-
