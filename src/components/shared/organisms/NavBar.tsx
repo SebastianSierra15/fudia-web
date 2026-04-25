@@ -126,11 +126,13 @@ export function NavBar({ activeItem }: NavBarProps) {
               <div className="hidden items-center gap-3 lg:flex">
                 <Button
                   label="Iniciar sesión"
+                  href="/login"
                   variant="ghost"
                   className="border border-(--color-nav-border) bg-(--color-surface-2)"
                 />
                 <Button
                   label="Descargar gratis"
+                  href="/"
                   className="hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
                 />
               </div>
@@ -192,11 +194,15 @@ export function NavBar({ activeItem }: NavBarProps) {
         <div className="mt-7 space-y-3 border-t border-(--color-nav-border) pt-6">
           <Button
             label="Iniciar sesión"
+            href="/login"
+            onClick={closeMobileMenu}
             variant="ghost"
             className="w-full border border-(--color-nav-border) bg-(--color-surface-2)"
           />
           <Button
             label="Descargar gratis"
+            href="/"
+            onClick={closeMobileMenu}
             className="w-full hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
           />
         </div>
@@ -204,4 +210,3 @@ export function NavBar({ activeItem }: NavBarProps) {
     </>
   );
 }
-

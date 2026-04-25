@@ -63,6 +63,7 @@ export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) 
             priceMain="$0"
             priceSuffix="/ mes"
             ctaLabel="Empezar gratis"
+            ctaHref="/login"
             ctaTone="dark"
             features={starterFeatures}
             descriptionRef={starterDescriptionRef}
@@ -77,6 +78,7 @@ export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) 
             priceMain={proPrice}
             priceSuffix="/ mes"
             ctaLabel="Comenzar con Pro"
+            ctaHref="/login"
             ctaTone="accent"
             highlighted
             delay={0.08}
@@ -89,4 +91,3 @@ export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) 
     </section>
   );
 }
-

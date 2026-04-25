@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { PlanFeatureItem } from "../atoms/PlanFeatureItem";
 import { PlanPill } from "../atoms/PlanPill";
@@ -18,6 +19,7 @@ type PricingPlanCardProps = {
   priceMain: string;
   priceSuffix: string;
   ctaLabel: string;
+  ctaHref?: string;
   ctaTone?: "dark" | "accent";
   highlighted?: boolean;
   features: Feature[];
@@ -34,6 +36,7 @@ export function PricingPlanCard({
   priceMain,
   priceSuffix,
   ctaLabel,
+  ctaHref,
   ctaTone = "dark",
   highlighted = false,
   features,
@@ -79,16 +82,30 @@ export function PricingPlanCard({
           </p>
         </div>
 
-        <button
-          type="button"
-          className={`mt-7 inline-flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border text-xl font-semibold transition-colors md:h-16 md:text-3xl ${
-            ctaTone === "accent"
-              ? "border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-link)"
-              : "border-[#2a3140] bg-[#1b1b1f] text-white hover:bg-[#2a2a31]"
-          }`}
-        >
-          {ctaLabel}
-        </button>
+        {ctaHref ? (
+          <Link
+            href={ctaHref}
+            title={ctaLabel}
+            className={`mt-7 inline-flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border text-xl font-semibold transition-colors md:h-16 md:text-3xl ${
+              ctaTone === "accent"
+                ? "border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-link)"
+                : "border-[#2a3140] bg-[#1b1b1f] text-white hover:bg-[#2a2a31]"
+            }`}
+          >
+            {ctaLabel}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className={`mt-7 inline-flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border text-xl font-semibold transition-colors md:h-16 md:text-3xl ${
+              ctaTone === "accent"
+                ? "border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-link)"
+                : "border-[#2a3140] bg-[#1b1b1f] text-white hover:bg-[#2a2a31]"
+            }`}
+          >
+            {ctaLabel}
+          </button>
+        )}
       </div>
 
       <div className="mt-6 h-px bg-(--color-border)" />
