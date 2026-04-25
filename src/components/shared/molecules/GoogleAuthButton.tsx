@@ -1,8 +1,22 @@
-export function GoogleAuthButton({ label }: { label: string }) {
+type GoogleAuthButtonProps = {
+  label: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+  onClick?: () => void;
+};
+
+export function GoogleAuthButton({
+  label,
+  disabled = false,
+  isLoading = false,
+  onClick,
+}: GoogleAuthButtonProps) {
   return (
     <button
       type="button"
-      className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-(--color-border) bg-background text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface-2)"
+      onClick={onClick}
+      disabled={disabled || isLoading}
+      className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-(--color-border) bg-background text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface-2) disabled:cursor-not-allowed disabled:opacity-70"
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
         <path
@@ -22,7 +36,14 @@ export function GoogleAuthButton({ label }: { label: string }) {
           d="M12 4.77c1.76 0 3.33.6 4.57 1.78l3.43-3.43C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.26 6.6l4.02 3.1C6.23 6.87 8.88 4.77 12 4.77z"
         />
       </svg>
-      {label}
+      {isLoading ? (
+        <span className="inline-flex items-center gap-2">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          Conectando...
+        </span>
+      ) : (
+        label
+      )}
     </button>
   );
 }

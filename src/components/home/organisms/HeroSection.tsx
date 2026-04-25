@@ -29,16 +29,16 @@ export function HeroSection() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <StoreDownloadButton
                 icon={Smartphone}
                 label="App Store"
-                className="border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-strong)"
+                className="w-full border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-strong) sm:w-auto"
               />
               <StoreDownloadButton
                 icon={Play}
                 label="Google Play"
-                className="border-[#2b354e] bg-[#141b2d] text-white hover:bg-[#1c2842]"
+                className="w-full border-[#2b354e] bg-[#141b2d] text-white hover:bg-[#1c2842] sm:w-auto"
               />
             </div>
 

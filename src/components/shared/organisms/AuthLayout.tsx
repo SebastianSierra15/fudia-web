@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, CircleCheckBig } from "lucide-react";
+import { CircleCheckBig } from "lucide-react";
 
 type AuthLayoutProps = {
   title: string;
@@ -68,26 +68,17 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
             <Link
               href="/"
               title="Fudia"
-              className="inline-flex items-center gap-2 lg:hidden"
+              className="inline-flex items-center gap-3 lg:hidden"
             >
               <Image
                 src="/global/fudia_logo.png"
                 alt="Fudia"
                 title="Fudia"
-                width={36}
-                height={36}
-                className="h-9 w-9 object-contain"
+                width={48}
+                height={48}
+                className="h-12 w-12 object-contain"
               />
-              <span className="text-2xl font-semibold text-foreground">Fudia</span>
-            </Link>
-
-            <Link
-              href="/"
-              title="Volver al inicio"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-(--color-muted) transition-colors hover:text-foreground lg:hidden"
-            >
-              <ChevronLeft size={16} />
-              Volver al inicio
+              <span className="text-3xl font-semibold text-foreground">Fudia</span>
             </Link>
 
             <div className="space-y-2">

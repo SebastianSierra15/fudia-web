@@ -1,9 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { PricingPlanCard } from "../molecules/PricingPlanCard";
 import type { BillingCycle } from "../molecules/BillingToggle";
 import { Container } from "@/src/components/shared/atoms/Container";
+import { buildLoginHref } from "@/src/lib/auth/redirect";
 
 type PricingPlansSectionProps = {
   billingCycle: BillingCycle;
@@ -24,10 +26,12 @@ const proFeatures = [
 ];
 
 export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) {
+  const pathname = usePathname();
   const proPrice = billingCycle === "yearly" ? "$7.99" : "$9.99";
   const starterDescriptionRef = useRef<HTMLParagraphElement>(null);
   const proDescriptionRef = useRef<HTMLParagraphElement>(null);
   const [descriptionMinHeight, setDescriptionMinHeight] = useState<number>(0);
+  const loginHref = useMemo(() => buildLoginHref(pathname), [pathname]);
 
   useLayoutEffect(() => {
     const measureDescriptionHeights = () => {
@@ -63,7 +67,7 @@ export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) 
             priceMain="$0"
             priceSuffix="/ mes"
             ctaLabel="Empezar gratis"
-            ctaHref="/login"
+            ctaHref={loginHref}
             ctaTone="dark"
             features={starterFeatures}
             descriptionRef={starterDescriptionRef}
@@ -78,7 +82,7 @@ export function PricingPlansSection({ billingCycle }: PricingPlansSectionProps) 
             priceMain={proPrice}
             priceSuffix="/ mes"
             ctaLabel="Comenzar con Pro"
-            ctaHref="/login"
+            ctaHref={loginHref}
             ctaTone="accent"
             highlighted
             delay={0.08}

@@ -1,13 +1,17 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Loader2, LogOut, Menu, User, X } from "lucide-react";
 import { Button } from "../atoms/Button";
 import { Container } from "../atoms/Container";
+import { buildLoginHref } from "@/src/lib/auth/redirect";
+import { getCurrentUser, logoutCurrentSession } from "@/src/lib/appwrite/auth";
 
 type NavItemKey = "producto" | "como-funciona" | "precios" | "blog";
+type AuthStatus = "checking" | "authenticated" | "guest";
 
 type NavBarProps = {
   activeItem?: NavItemKey;
@@ -15,13 +19,72 @@ type NavBarProps = {
 
 const navItems: { key: NavItemKey; label: string; href: string }[] = [
   { key: "producto", label: "Producto", href: "/producto" },
-  { key: "como-funciona", label: "Cómo funciona", href: "/como-funciona" },
+  { key: "como-funciona", label: "Como funciona", href: "/como-funciona" },
   { key: "precios", label: "Precios", href: "/precios" },
   { key: "blog", label: "Blog", href: "#blog" },
 ];
 
+const APP_ENTRY_HREF = "/";
+
 export function NavBar({ activeItem }: NavBarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const isMountedRef = useRef(false);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const [userLabel, setUserLabel] = useState("Usuario");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const loginHref = useMemo(() => buildLoginHref(pathname), [pathname]);
+  const isAuthenticated = authStatus === "authenticated";
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const resolveSession = async () => {
+      const user = await getCurrentUser();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!user) {
+        setAuthStatus("guest");
+        return;
+      }
+
+      if (!user.emailVerification) {
+        await logoutCurrentSession().catch(() => undefined);
+
+        if (isActive) {
+          setAuthStatus("guest");
+        }
+        return;
+      }
+
+      const name = user.name?.trim();
+      const email = user.email?.trim();
+      setUserLabel(name || email || "Usuario");
+      setAuthStatus("authenticated");
+    };
+
+    void resolveSession();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isMobileMenuOpen) {
@@ -62,7 +125,71 @@ export function NavBar({ activeItem }: NavBarProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!userMenuRef.current) {
+        return;
+      }
+
+      const target = event.target as Node | null;
+      if (target && userMenuRef.current.contains(target)) {
+        return;
+      }
+
+      setIsUserMenuOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") {
+      setIsUserMenuOpen(false);
+    }
+  }, [authStatus]);
+
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    if (isMountedRef.current) {
+      setIsLoggingOut(true);
+    }
+
+    try {
+      await logoutCurrentSession();
+      if (isMountedRef.current) {
+        setAuthStatus("guest");
+        setUserLabel("Usuario");
+        setIsUserMenuOpen(false);
+        closeMobileMenu();
+        router.refresh();
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoggingOut(false);
+      }
+    }
+  };
 
   return (
     <>
@@ -114,8 +241,8 @@ export function NavBar({ activeItem }: NavBarProps) {
             <div className="flex items-center gap-3 lg:justify-self-end">
               <button
                 type="button"
-                title="Abrir menú"
-                aria-label="Abrir menú"
+                title="Abrir menu"
+                aria-label="Abrir menu"
                 aria-expanded={isMobileMenuOpen}
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) text-foreground transition-colors hover:bg-(--color-surface) lg:hidden"
@@ -124,17 +251,77 @@ export function NavBar({ activeItem }: NavBarProps) {
               </button>
 
               <div className="hidden items-center gap-3 lg:flex">
-                <Button
-                  label="Iniciar sesión"
-                  href="/login"
-                  variant="ghost"
-                  className="border border-(--color-nav-border) bg-(--color-surface-2)"
-                />
-                <Button
-                  label="Descargar gratis"
-                  href="/"
-                  className="hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
-                />
+                {authStatus === "checking" ? (
+                  <div className="h-11 w-40 animate-pulse rounded-xl border border-(--color-nav-border) bg-(--color-surface-2)" />
+                ) : isAuthenticated ? (
+                  <>
+                    <Button
+                      label="Ir a la app"
+                      href={APP_ENTRY_HREF}
+                      className="hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
+                    />
+
+                    <div ref={userMenuRef} className="relative">
+                      <button
+                        type="button"
+                        title="Cuenta"
+                        aria-label="Cuenta"
+                        aria-expanded={isUserMenuOpen}
+                        onClick={() =>
+                          setIsUserMenuOpen((previous) => !previous)
+                        }
+                        className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) text-foreground transition-colors hover:bg-(--color-surface)"
+                      >
+                        <User size={20} />
+                      </button>
+
+                      <div
+                        className={`absolute top-full right-0 z-20 pt-3 transition-all duration-200 ${
+                          isUserMenuOpen
+                            ? "pointer-events-auto translate-y-0 opacity-100"
+                            : "pointer-events-none -translate-y-1 opacity-0"
+                        }`}
+                      >
+                        <div className="w-64 rounded-2xl border border-(--color-nav-border) bg-(--color-surface) p-4 shadow-[0_16px_40px_rgba(0,0,0,0.3)]">
+                          <p className="text-xs font-medium tracking-wide text-(--color-muted)">
+                            Sesión iniciada
+                          </p>
+                          <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                            {userLabel}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface) disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {isLoggingOut ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <LogOut size={16} />
+                            )}
+                            Cerrar sesión
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      label="Iniciar sesión"
+                      href={loginHref}
+                      variant="ghost"
+                      className="border border-(--color-nav-border) bg-(--color-surface-2)"
+                    />
+                    <Button
+                      label="Descargar gratis"
+                      href="/"
+                      className="hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
+                    />
+                  </>
+                )}
               </div>
             </div>
           </nav>
@@ -158,11 +345,11 @@ export function NavBar({ activeItem }: NavBarProps) {
         aria-hidden={!isMobileMenuOpen}
       >
         <div className="mb-8 flex items-center justify-between">
-          <span className="text-2xl font-semibold text-foreground">Menú</span>
+          <span className="text-2xl font-semibold text-foreground">Menu</span>
           <button
             type="button"
-            title="Cerrar menú"
-            aria-label="Cerrar menú"
+            title="Cerrar menu"
+            aria-label="Cerrar menu"
             onClick={closeMobileMenu}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-(--color-nav-border) bg-(--color-surface-2) text-foreground transition-colors hover:bg-(--color-surface)"
           >
@@ -192,19 +379,48 @@ export function NavBar({ activeItem }: NavBarProps) {
         </nav>
 
         <div className="mt-7 space-y-3 border-t border-(--color-nav-border) pt-6">
-          <Button
-            label="Iniciar sesión"
-            href="/login"
-            onClick={closeMobileMenu}
-            variant="ghost"
-            className="w-full border border-(--color-nav-border) bg-(--color-surface-2)"
-          />
-          <Button
-            label="Descargar gratis"
-            href="/"
-            onClick={closeMobileMenu}
-            className="w-full hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
-          />
+          {authStatus === "checking" ? (
+            <div className="h-11 w-full animate-pulse rounded-xl border border-(--color-nav-border) bg-(--color-surface-2)" />
+          ) : isAuthenticated ? (
+            <>
+              <Button
+                label="Ir a la app"
+                href={APP_ENTRY_HREF}
+                onClick={closeMobileMenu}
+                className="w-full hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
+              />
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) px-4 text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface) disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isLoggingOut ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <LogOut size={16} />
+                )}
+                Cerrar sesión
+              </button>
+            </>
+          ) : (
+            <>
+              <Button
+                label="Iniciar sesión"
+                href={loginHref}
+                onClick={closeMobileMenu}
+                variant="ghost"
+                className="w-full border border-(--color-nav-border) bg-(--color-surface-2)"
+              />
+              <Button
+                label="Descargar gratis"
+                href="/"
+                onClick={closeMobileMenu}
+                className="w-full hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
+              />
+            </>
+          )}
         </div>
       </aside>
     </>
