@@ -1,9 +1,14 @@
-﻿import { AppwriteException, Models, OAuthProvider } from "appwrite";
-import { getAppwriteAccount } from "./client";
+import { AppwriteException, Models, OAuthProvider } from "appwrite";
+import { APPWRITE_ADMIN_TEAM_ID } from "@/src/lib/auth/admin";
+import { getAppwriteAccount, getAppwriteTeams } from "./client";
 
 type LoginWithEmailResult =
   | { success: true }
   | { success: false; code: string; message: string };
+
+type AdminAccessSessionResult =
+  | { success: true }
+  | { success: false; code: "NO_SESSION" | "UNAUTHORIZED" | "REQUEST_ERROR" };
 
 const GENERIC_LOGIN_ERROR_MESSAGE =
   "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
@@ -50,6 +55,16 @@ function mapLoginError(error: unknown): { code: string; message: string } {
   };
 }
 
+async function createCurrentSessionJwt() {
+  try {
+    const account = getAppwriteAccount();
+    const jwt = await account.createJWT({ duration: 900 });
+    return jwt.jwt;
+  } catch {
+    return null;
+  }
+}
+
 export async function loginWithEmailPassword(
   email: string,
   password: string,
@@ -83,7 +98,9 @@ export async function startGoogleOAuthLogin(nextPath: string) {
   });
 }
 
-export async function getCurrentUser(): Promise<Models.User<Models.Preferences> | null> {
+export async function getCurrentUser(): Promise<
+  Models.User<Models.Preferences> | null
+> {
   try {
     const account = getAppwriteAccount();
     return await account.get();
@@ -92,15 +109,74 @@ export async function getCurrentUser(): Promise<Models.User<Models.Preferences> 
   }
 }
 
+export async function isCurrentUserInTeam(teamId: string) {
+  try {
+    const teams = getAppwriteTeams();
+    const teamList = await teams.list({ total: false });
+    return teamList.teams.some((team) => team.$id === teamId);
+  } catch {
+    return false;
+  }
+}
+
+export function isCurrentUserAdmin() {
+  return isCurrentUserInTeam(APPWRITE_ADMIN_TEAM_ID);
+}
+
+export async function syncAdminAccessSession(): Promise<AdminAccessSessionResult> {
+  const jwt = await createCurrentSessionJwt();
+  if (!jwt) {
+    return { success: false, code: "NO_SESSION" };
+  }
+
+  try {
+    const response = await fetch("/api/admin/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ jwt }),
+    });
+
+    if (response.ok) {
+      return { success: true };
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, code: "UNAUTHORIZED" };
+    }
+
+    return { success: false, code: "REQUEST_ERROR" };
+  } catch {
+    return { success: false, code: "REQUEST_ERROR" };
+  }
+}
+
+export async function clearAdminAccessSession() {
+  try {
+    await fetch("/api/admin/session", {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+  } catch {
+    return;
+  }
+}
+
 export async function logoutCurrentSession() {
+  let unexpectedError: unknown = null;
+
   try {
     const account = getAppwriteAccount();
     await account.deleteSession("current");
   } catch (error) {
-    if (error instanceof AppwriteException && error.code === 401) {
-      return;
+    if (!(error instanceof AppwriteException && error.code === 401)) {
+      unexpectedError = error;
     }
+  }
 
-    throw error;
+  await clearAdminAccessSession();
+
+  if (unexpectedError) {
+    throw unexpectedError;
   }
 }

@@ -1,6 +1,8 @@
-﻿import { Account, Client } from "appwrite";
+import { Account, Client, Teams } from "appwrite";
 
+let clientInstance: Client | null = null;
 let accountInstance: Account | null = null;
+let teamsInstance: Teams | null = null;
 
 const GENERIC_CONFIG_ERROR_MESSAGE =
   "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
@@ -16,16 +18,33 @@ function getAppwriteConfig() {
   return { endpoint, projectId };
 }
 
+function getAppwriteClient() {
+  if (clientInstance) {
+    return clientInstance;
+  }
+
+  const { endpoint, projectId } = getAppwriteConfig();
+  const client = new Client();
+  client.setEndpoint(endpoint).setProject(projectId);
+
+  clientInstance = client;
+  return clientInstance;
+}
+
 export function getAppwriteAccount() {
   if (accountInstance) {
     return accountInstance;
   }
 
-  const { endpoint, projectId } = getAppwriteConfig();
-
-  const client = new Client();
-  client.setEndpoint(endpoint).setProject(projectId);
-
-  accountInstance = new Account(client);
+  accountInstance = new Account(getAppwriteClient());
   return accountInstance;
+}
+
+export function getAppwriteTeams() {
+  if (teamsInstance) {
+    return teamsInstance;
+  }
+
+  teamsInstance = new Teams(getAppwriteClient());
+  return teamsInstance;
 }
