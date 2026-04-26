@@ -1,8 +1,9 @@
-import { Account, Client, Teams } from "appwrite";
+import { Account, Client, Databases, Teams } from "appwrite";
 
 let clientInstance: Client | null = null;
 let accountInstance: Account | null = null;
 let teamsInstance: Teams | null = null;
+let databasesInstance: Databases | null = null;
 
 const GENERIC_CONFIG_ERROR_MESSAGE =
   "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
@@ -47,4 +48,13 @@ export function getAppwriteTeams() {
 
   teamsInstance = new Teams(getAppwriteClient());
   return teamsInstance;
+}
+
+export function getAppwriteDatabases() {
+  if (databasesInstance) {
+    return databasesInstance;
+  }
+
+  databasesInstance = new Databases(getAppwriteClient());
+  return databasesInstance;
 }

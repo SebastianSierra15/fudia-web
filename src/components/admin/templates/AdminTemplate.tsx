@@ -7,6 +7,7 @@ import { NavBar } from "@/src/components/shared/organisms/NavBar";
 import { ADMIN_AUTHORIZE_PATH, ADMIN_HOME_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { getCurrentUser, syncAdminAccessSession } from "@/src/lib/appwrite/auth";
+import { AdminFinanceSection } from "../organisms/AdminFinanceSection";
 
 type AccessStatus = "checking" | "allowed";
 
@@ -106,6 +107,8 @@ export function AdminTemplate() {
               </div>
             </div>
           </section>
+
+          <AdminFinanceSection />
         </Container>
       </main>
     </div>
