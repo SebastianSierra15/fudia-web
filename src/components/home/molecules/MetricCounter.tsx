@@ -10,6 +10,8 @@ type MetricCounterProps = {
   suffix?: string;
   decimals?: number;
   delay?: number;
+  valueClassName?: string;
+  labelClassName?: string;
 };
 
 export function MetricCounter({
@@ -19,6 +21,8 @@ export function MetricCounter({
   suffix = "",
   decimals = 0,
   delay = 0,
+  valueClassName = "",
+  labelClassName = "",
 }: MetricCounterProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.45 });
@@ -49,12 +53,16 @@ export function MetricCounter({
       transition={{ duration: 0.45, delay }}
       className="text-center"
     >
-      <p className="text-4xl leading-none font-semibold text-(--color-accent)">
+      <p
+        className={`text-4xl leading-none font-semibold text-(--color-accent) ${valueClassName}`}
+      >
         {prefix}
         {value}
         {suffix}
       </p>
-      <p className="mt-3 text-base leading-tight font-medium text-(--color-muted)">
+      <p
+        className={`mt-3 text-base leading-tight font-medium text-(--color-muted) ${labelClassName}`}
+      >
         {label}
       </p>
     </motion.div>

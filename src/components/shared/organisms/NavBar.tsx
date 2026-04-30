@@ -10,7 +10,7 @@ import { Container } from "../atoms/Container";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { getCurrentUser, logoutCurrentSession } from "@/src/lib/appwrite/auth";
 
-type NavItemKey = "producto" | "como-funciona" | "precios" | "blog";
+type NavItemKey = "producto" | "como-funciona" | "precios" | "sobre-nosotros";
 type AuthStatus = "checking" | "authenticated" | "guest";
 
 type NavBarProps = {
@@ -21,7 +21,11 @@ const navItems: { key: NavItemKey; label: string; href: string }[] = [
   { key: "producto", label: "Producto", href: "/producto" },
   { key: "como-funciona", label: "Como funciona", href: "/como-funciona" },
   { key: "precios", label: "Precios", href: "/precios" },
-  { key: "blog", label: "Blog", href: "#blog" },
+  {
+    key: "sobre-nosotros",
+    label: "Sobre nosotros",
+    href: "/sobre-nosotros",
+  },
 ];
 
 const APP_ENTRY_HREF = "/";

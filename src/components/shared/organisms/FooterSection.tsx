@@ -7,24 +7,15 @@ import { FooterColumn } from "../molecules/FooterColumn";
 const columns = [
   {
     title: "Producto",
-    links: [
-      { label: "Caracteristicas", href: "/producto" },
-      { label: "Precios", href: "/precios" },
-      { label: "Changelog", href: "#" },
-    ],
+    links: [{ label: "Precios", href: "/precios" }],
   },
   {
-    title: "Compañía",
-    links: [
-      { label: "Sobre nosotros", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Carreras", href: "#" },
-    ],
+    title: "Compania",
+    links: [{ label: "Sobre nosotros", href: "/sobre-nosotros" }],
   },
   {
     title: "Soporte",
     links: [
-      { label: "Centro de ayuda", href: "#" },
       { label: "Contacto", href: "#" },
       { label: "Privacidad", href: "#" },
     ],
@@ -32,11 +23,11 @@ const columns = [
 ];
 
 const legalLinks = [
-  { label: "Términos de uso", href: "#", title: "Términos de uso" },
+  { label: "Terminos de uso", href: "#", title: "Terminos de uso" },
   {
-    label: "Política de privacidad",
+    label: "Politica de privacidad",
     href: "#",
-    title: "Política de privacidad",
+    title: "Politica de privacidad",
   },
   { label: "Cookies", href: "#", title: "Cookies" },
 ];
@@ -115,4 +106,3 @@ export function FooterSection() {
     </footer>
   );
 }
-
