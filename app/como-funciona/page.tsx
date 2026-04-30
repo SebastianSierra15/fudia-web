@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title,
   description,
   keywords: [
-    "como funciona fudia",
+    "cómo funciona fudia",
     "registro de comida",
     "analisis nutricional IA",
     "app nutricion",
@@ -43,4 +43,3 @@ export const metadata: Metadata = {
 export default function ComoFuncionaPage() {
   return <HowItWorksTemplate />;
 }
-

@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { Container } from "@/src/components/shared/atoms/Container";
 import { SectionTag } from "@/src/components/shared/atoms/SectionTag";
@@ -8,9 +11,22 @@ export function AboutStorySection() {
     <section className="bg-background py-16 md:py-20 dark:bg-(--color-surface)">
       <Container>
         <div className="grid gap-14 xl:grid-cols-[1.05fr_1fr] xl:items-center">
-          <AboutStoryMosaic />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.35 }}
+            transition={{ duration: 0.48, ease: "easeOut" }}
+          >
+            <AboutStoryMosaic />
+          </motion.div>
 
-          <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.35 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.08 }}
+            className="space-y-6"
+          >
             <SectionTag label="NUESTRA HISTORIA" icon={Sparkles} />
 
             <h2 className="text-balance text-5xl leading-[1.08] font-semibold text-foreground md:text-7xl">
@@ -36,10 +52,9 @@ export function AboutStorySection() {
                 }
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </Container>
     </section>
   );
 }
-

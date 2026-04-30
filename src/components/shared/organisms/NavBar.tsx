@@ -19,7 +19,7 @@ type NavBarProps = {
 
 const navItems: { key: NavItemKey; label: string; href: string }[] = [
   { key: "producto", label: "Producto", href: "/producto" },
-  { key: "como-funciona", label: "Como funciona", href: "/como-funciona" },
+  { key: "como-funciona", label: "Cómo funciona", href: "/como-funciona" },
   { key: "precios", label: "Precios", href: "/precios" },
   {
     key: "sobre-nosotros",

@@ -17,7 +17,7 @@ const columns = [
     title: "Soporte",
     links: [
       { label: "Contacto", href: "#" },
-      { label: "Privacidad", href: "#" },
+      { label: "Privacidad", href: "/politica-privacidad" },
     ],
   },
 ];
@@ -26,7 +26,7 @@ const legalLinks = [
   { label: "Terminos de uso", href: "#", title: "Terminos de uso" },
   {
     label: "Politica de privacidad",
-    href: "#",
+    href: "/politica-privacidad",
     title: "Politica de privacidad",
   },
   { label: "Cookies", href: "#", title: "Cookies" },
