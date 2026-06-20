@@ -4,11 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Loader2, LogOut, Menu, User, X } from "lucide-react";
+import { LayoutDashboard, Loader2, LogOut, Menu, User, X } from "lucide-react";
 import { Button } from "../atoms/Button";
 import { Container } from "../atoms/Container";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
-import { getCurrentUser, logoutCurrentSession } from "@/src/lib/appwrite/auth";
+import {
+  getCurrentUser,
+  isCurrentUserAdmin,
+  logoutCurrentSession,
+} from "@/src/lib/appwrite/auth";
 
 type NavItemKey = "producto" | "como-funciona" | "precios" | "sobre-nosotros";
 type AuthStatus = "checking" | "authenticated" | "guest";
@@ -39,6 +43,7 @@ export function NavBar({ activeItem }: NavBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [userLabel, setUserLabel] = useState("Usuario");
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -79,7 +84,14 @@ export function NavBar({ activeItem }: NavBarProps) {
 
       const name = user.name?.trim();
       const email = user.email?.trim();
+      const hasAdminAccess = await isCurrentUserAdmin();
+
+      if (!isActive) {
+        return;
+      }
+
       setUserLabel(name || email || "Usuario");
+      setIsAdminUser(hasAdminAccess);
       setAuthStatus("authenticated");
     };
 
@@ -183,6 +195,7 @@ export function NavBar({ activeItem }: NavBarProps) {
       await logoutCurrentSession();
       if (isMountedRef.current) {
         setAuthStatus("guest");
+        setIsAdminUser(false);
         setUserLabel("Usuario");
         setIsUserMenuOpen(false);
         closeMobileMenu();
@@ -294,11 +307,23 @@ export function NavBar({ activeItem }: NavBarProps) {
                             {userLabel}
                           </p>
 
+                          {isAdminUser ? (
+                            <Link
+                              href="/admin"
+                              title="Ir al panel admin"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface)"
+                            >
+                              <LayoutDashboard size={16} />
+                              Ir al panel admin
+                            </Link>
+                          ) : null}
+
                           <button
                             type="button"
                             onClick={handleLogout}
                             disabled={isLoggingOut}
-                            className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface) disabled:cursor-not-allowed disabled:opacity-70"
+                            className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-(--color-nav-border) bg-(--color-surface-2) px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-(--color-surface) disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             {isLoggingOut ? (
                               <Loader2 size={16} className="animate-spin" />
@@ -393,6 +418,16 @@ export function NavBar({ activeItem }: NavBarProps) {
                 onClick={closeMobileMenu}
                 className="w-full hover:bg-(--color-accent-link) hover:text-(--color-accent-contrast)"
               />
+
+              {isAdminUser ? (
+                <Button
+                  label="Ir al panel admin"
+                  href="/admin"
+                  onClick={closeMobileMenu}
+                  variant="secondary"
+                  className="w-full"
+                />
+              ) : null}
 
               <button
                 type="button"

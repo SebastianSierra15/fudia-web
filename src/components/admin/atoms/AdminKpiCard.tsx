@@ -18,7 +18,7 @@ export function AdminKpiCard({
   tone = "neutral",
 }: AdminKpiCardProps) {
   return (
-    <article className="rounded-2xl border border-(--color-border) bg-(--color-surface-2) p-5">
+    <article className="rounded-lg border border-(--color-border) bg-(--color-surface-2) p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
         {title}
       </p>

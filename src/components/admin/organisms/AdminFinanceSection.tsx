@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/src/components/shared/atoms/Button";
+import { Toast } from "@/src/components/shared/molecules/Toast";
 import { getCurrentUser } from "@/src/lib/appwrite/auth";
 import {
   createFinanceSnapshot,
@@ -23,6 +24,12 @@ type FinanceFormState = {
   creditsUsd: string;
   fxRateCopUsd: string;
   notes: string;
+};
+
+type FinanceAlert = {
+  open: boolean;
+  type: "success" | "error" | "warning";
+  message: string;
 };
 
 const GENERIC_LOAD_ERROR = "No se pudo cargar la informacion financiera.";
@@ -64,8 +71,11 @@ export function AdminFinanceSection() {
   const [mode, setMode] = useState<CurrencyMode>("COP");
   const [snapshots, setSnapshots] = useState<FinanceSnapshot[]>([]);
   const [premiumUsers, setPremiumUsers] = useState(0);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [alert, setAlert] = useState<FinanceAlert>({
+    open: false,
+    type: "success",
+    message: "",
+  });
   const [isConfigMissing, setIsConfigMissing] = useState(false);
   const [formState, setFormState] = useState<FinanceFormState>(
     createInitialFormState(),
@@ -76,7 +86,7 @@ export function AdminFinanceSection() {
 
     const loadFinanceData = async () => {
       setIsLoading(true);
-      setErrorMessage("");
+      let nextAlert: Omit<FinanceAlert, "open"> | null = null;
 
       const [snapshotResult, premiumUsersCount] = await Promise.all([
         listFinanceSnapshots(),
@@ -91,7 +101,10 @@ export function AdminFinanceSection() {
         if (snapshotResult.code === "MISSING_CONFIG") {
           setIsConfigMissing(true);
         } else {
-          setErrorMessage(GENERIC_LOAD_ERROR);
+          nextAlert = {
+            type: "error",
+            message: GENERIC_LOAD_ERROR,
+          };
         }
       } else {
         setIsConfigMissing(false);
@@ -100,10 +113,12 @@ export function AdminFinanceSection() {
 
       if (typeof premiumUsersCount === "number") {
         setPremiumUsers(premiumUsersCount);
+      }
+
+      if (nextAlert) {
+        setAlert({ open: true, ...nextAlert });
       } else {
-        setErrorMessage((previous) =>
-          previous || "No se pudo obtener el total de usuarios Premium.",
-        );
+        setAlert((previous) => ({ ...previous, open: false }));
       }
 
       setIsLoading(false);
@@ -183,13 +198,16 @@ export function AdminFinanceSection() {
       fxRate === null ||
       fxRate <= 0
     ) {
-      setErrorMessage("Completa correctamente los campos del snapshot.");
+      setAlert({
+        open: true,
+        type: "warning",
+        message: "Completa correctamente los campos del snapshot.",
+      });
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage("");
-    setSuccessMessage("");
+    setAlert((previous) => ({ ...previous, open: false }));
 
     const currentUser = await getCurrentUser();
     const saveResult = await createFinanceSnapshot({
@@ -206,7 +224,11 @@ export function AdminFinanceSection() {
       if (saveResult.code === "MISSING_CONFIG") {
         setIsConfigMissing(true);
       }
-      setErrorMessage(GENERIC_SAVE_ERROR);
+      setAlert({
+        open: true,
+        type: "error",
+        message: GENERIC_SAVE_ERROR,
+      });
       setIsSubmitting(false);
       return;
     }
@@ -214,12 +236,16 @@ export function AdminFinanceSection() {
     setSnapshots((previous) =>
       sortSnapshotsDescending([saveResult.snapshot, ...previous]),
     );
-    setSuccessMessage("Snapshot financiero guardado correctamente.");
+    setAlert({
+      open: true,
+      type: "success",
+      message: "Snapshot financiero guardado correctamente.",
+    });
     setIsSubmitting(false);
   };
 
   return (
-    <section className="mt-8 rounded-3xl border border-(--color-border) bg-(--color-surface) p-6 shadow-[0_20px_48px_rgba(0,0,0,0.15)] md:p-8">
+    <section className="mt-5 rounded-lg border border-(--color-border) bg-(--color-surface) p-5 shadow-[0_20px_48px_rgba(0,0,0,0.15)] md:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
@@ -267,27 +293,13 @@ export function AdminFinanceSection() {
 
       {isConfigMissing ? (
         <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Falta configurar el modulo financiero en variables de entorno:
-          `NEXT_PUBLIC_APPWRITE_DATABASE_ID` y
-          `NEXT_PUBLIC_APPWRITE_FINANCE_COLLECTION_ID`.
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="mt-6 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-          {errorMessage}
-        </div>
-      ) : null}
-
-      {successMessage ? (
-        <div className="mt-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          {successMessage}
+          El modulo financiero esta pendiente de activacion.
         </div>
       ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <form
-          className="rounded-2xl border border-(--color-border) bg-(--color-surface-2) p-5"
+          className="rounded-lg border border-(--color-border) bg-(--color-surface-2) p-5"
           onSubmit={handleSubmit}
         >
           <p className="text-sm font-semibold">Nuevo snapshot mensual</p>
@@ -380,7 +392,7 @@ export function AdminFinanceSection() {
           </div>
         </form>
 
-        <div className="rounded-2xl border border-(--color-border) bg-(--color-surface-2) p-5">
+        <div className="rounded-lg border border-(--color-border) bg-(--color-surface-2) p-5">
           <p className="text-sm font-semibold">Historial de snapshots</p>
           <p className="mt-1 text-xs text-(--color-muted)">
             Ultimos costos registrados para analisis mensual.
@@ -428,6 +440,13 @@ export function AdminFinanceSection() {
           )}
         </div>
       </div>
+
+      <Toast
+        open={alert.open}
+        type={alert.type}
+        message={alert.message}
+        onClose={() => setAlert((previous) => ({ ...previous, open: false }))}
+      />
     </section>
   );
 }

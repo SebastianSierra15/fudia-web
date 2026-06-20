@@ -55,7 +55,7 @@ function mapLoginError(error: unknown): { code: string; message: string } {
   };
 }
 
-async function createCurrentSessionJwt() {
+export async function createCurrentSessionJwt() {
   try {
     const account = getAppwriteAccount();
     const jwt = await account.createJWT({ duration: 900 });

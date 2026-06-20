@@ -201,3 +201,42 @@ Fudia prioritizes:
 ---
 
 This file is the main guide for the web application.
+
+---
+
+# Project Token Budget Rules
+
+Use the global Codex skills:
+
+- `token-budget` for PDFs, images, Office files, logs, transcripts, and other large files.
+- `code-token-budget` for implementation, debugging, review, refactoring, test, and code explanation tasks.
+
+## Coding Defaults
+
+- Search before reading large files.
+- Use `rg`/file lists/diffs to locate relevant code first.
+- Read only targeted files or line ranges when possible.
+- Avoid generated, vendored, build, cache, coverage, and dependency folders unless directly relevant.
+- Broaden to repository-wide analysis only when the task requires it, and state why.
+- For long tasks, keep a compact `.codex-token-worklog.md` to avoid rereading the same context.
+
+## Large File Defaults
+
+- Do not read a large binary/document directly when a preflight artifact can answer the task.
+- Prefer `C:\Users\sebsi\Documents\Codex\token-budget\preflight.ps1` before sending full content to the model.
+- Use `summary.md` and `index.md` first; open `content.md`/`content.txt` only for relevant sections.
+- Read the original PDF/image/Office file only when reduced artifacts are insufficient.
+
+## Shared Paths
+
+- Inbox: `C:\Users\sebsi\Documents\Codex\file-inbox`
+- Cache: `C:\Users\sebsi\Documents\Codex\file-cache`
+- Tools: `C:\Users\sebsi\Documents\Codex\token-budget`
+
+## Subagent Policy
+
+- Do not create subagents by default.
+- Use direct local inspection first.
+- Only use subagents when the user explicitly asks for parallel review or when a complex task clearly benefits from independent analysis.
+- If subagents are needed, state why before creating them.
+

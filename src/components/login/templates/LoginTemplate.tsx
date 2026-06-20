@@ -29,7 +29,7 @@ type FieldErrors = {
 type ToastState = {
   open: boolean;
   message: string;
-  type: "error" | "success" | "info";
+  type: "error" | "success" | "warning" | "info";
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
