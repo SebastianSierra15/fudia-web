@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { AdminFeedbackProvider } from "../molecules/AdminFeedbackProvider";
 
 type AdminShellProps = {
   title: string;
@@ -23,6 +24,7 @@ type AdminShellProps = {
   userLabel: string;
   children: ReactNode;
   actions?: ReactNode;
+  isRightPanelOpen?: boolean;
 };
 
 const adminTheme: CSSProperties & Record<string, string> = {
@@ -45,23 +47,36 @@ const adminTheme: CSSProperties & Record<string, string> = {
 
 const menuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/users", label: "Usuarios", icon: Users, disabled: true },
+  { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/ia", label: "IA Analytics", icon: BrainCircuit },
-  { href: "/admin/transactions", label: "Transacciones", icon: BarChart3, disabled: true },
-  { href: "/admin/support", label: "Soporte", icon: CircleHelp, badge: "12", disabled: true },
+  {
+    href: "/admin/transactions",
+    label: "Transacciones",
+    icon: BarChart3,
+    disabled: true,
+  },
+  {
+    href: "/admin/support",
+    label: "Soporte",
+    icon: CircleHelp,
+    badge: "12",
+    disabled: true,
+  },
   { href: "/admin/logs", label: "Logs", icon: ScrollText },
 ];
 
 const systemItems = [
-  { href: "/admin/settings", label: "Configuracion", icon: Settings, disabled: true },
+  {
+    href: "/admin/settings",
+    label: "Configuracion",
+    icon: Settings,
+    disabled: true,
+  },
   { href: "/admin/team", label: "Equipo", icon: Users, disabled: true },
 ];
 
 function getInitials(label: string) {
-  const parts = label
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = label.trim().split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) {
     return "AD";
@@ -190,71 +205,80 @@ export function AdminShell({
   userLabel,
   children,
   actions,
+  isRightPanelOpen = false,
 }: AdminShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div
-      style={adminTheme}
-      className="min-h-screen bg-(--color-bg) text-foreground"
-    >
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[210px] border-r border-(--color-border) bg-(--color-surface) lg:block">
-        <SidebarContent userLabel={userLabel} />
-      </aside>
-
+    <AdminFeedbackProvider>
       <div
-        className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-200 lg:hidden ${
-          isSidebarOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        }`}
-        onClick={() => setIsSidebarOpen(false)}
-      />
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[86vw] border-r border-(--color-border) bg-(--color-surface) shadow-[18px_0_50px_rgba(0,0,0,0.35)] transition-transform duration-200 lg:hidden ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        style={adminTheme}
+        className="min-h-screen bg-(--color-bg) text-foreground"
       >
-        <button
-          type="button"
-          title="Cerrar menu"
-          aria-label="Cerrar menu"
-          className="absolute top-3 right-3 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground"
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[210px] border-r border-(--color-border) bg-(--color-surface) lg:block">
+          <SidebarContent userLabel={userLabel} />
+        </aside>
+
+        <div
+          className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-200 lg:hidden ${
+            isSidebarOpen
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0"
+          }`}
           onClick={() => setIsSidebarOpen(false)}
-        >
-          <X size={18} />
-        </button>
-        <SidebarContent
-          userLabel={userLabel}
-          onNavigate={() => setIsSidebarOpen(false)}
         />
-      </aside>
 
-      <main className="min-h-screen lg:pl-[210px]">
-        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              title="Abrir menu"
-              aria-label="Abrir menu"
-              className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground lg:hidden"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <Menu size={18} />
-            </button>
-            <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold leading-6">{title}</h1>
-              <p className="truncate text-xs text-(--color-muted)">{subtitle}</p>
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[86vw] border-r border-(--color-border) bg-(--color-surface) shadow-[18px_0_50px_rgba(0,0,0,0.35)] transition-transform duration-200 lg:hidden ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <button
+            type="button"
+            title="Cerrar menu"
+            aria-label="Cerrar menu"
+            className="absolute top-3 right-3 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X size={18} />
+          </button>
+          <SidebarContent
+            userLabel={userLabel}
+            onNavigate={() => setIsSidebarOpen(false)}
+          />
+        </aside>
+
+        <main className="min-h-screen lg:pl-[210px]">
+          <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                title="Abrir menu"
+                aria-label="Abrir menu"
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground lg:hidden"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu size={18} />
+              </button>
+              <div className="min-w-0">
+                <h1 className="truncate text-xl font-bold leading-6">
+                  {title}
+                </h1>
+                <p className="truncate text-xs text-(--color-muted)">
+                  {subtitle}
+                </p>
+              </div>
             </div>
-          </div>
-          {actions ? <div className="shrink-0">{actions}</div> : null}
-        </header>
+            {actions ? <div className="shrink-0">{actions}</div> : null}
+          </header>
 
-        <div className="mx-auto max-w-[1240px] animate-[admin-fade-in_0.28s_ease-out] px-4 py-4 md:px-7">
-          {children}
-        </div>
-      </main>
-    </div>
+          <div
+            className={`mx-auto max-w-[1240px] animate-[admin-fade-in_0.28s_ease-out] px-4 py-4 transition-[padding,max-width] duration-300 ease-out md:px-7 ${isRightPanelOpen ? "xl:max-w-none xl:pr-[397px]" : ""}`}
+          >
+            {children}
+          </div>
+        </main>
+      </div>
+    </AdminFeedbackProvider>
   );
 }
