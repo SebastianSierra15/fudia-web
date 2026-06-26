@@ -249,12 +249,6 @@ export function LoginTemplate({
             disabled={isGoogleSubmitting}
           />
 
-          {fieldErrors.general ? (
-            <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {fieldErrors.general}
-            </p>
-          ) : null}
-
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-(--color-border)" />
             <span className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">

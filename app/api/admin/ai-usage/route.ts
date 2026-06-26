@@ -5,6 +5,10 @@ import {
   parseAiUsageMonth,
 } from "@/src/lib/admin-ai/server";
 import {
+  writeAdminWebExceptionLog,
+  writeAdminWebLog,
+} from "@/src/lib/admin-logs/web-logger";
+import {
   readBearerToken,
   validateAdminJwt,
 } from "@/src/lib/auth/admin-server";
@@ -29,25 +33,38 @@ export async function GET(request: NextRequest) {
     return jsonError("Autenticacion requerida.", 401);
   }
 
+  let actorUserId = "";
+  let month = "";
+
   try {
     const authorization = await validateAdminJwt(jwt);
     if (!authorization.success) {
       return jsonError("No tienes acceso a este recurso.", authorization.status);
     }
+    actorUserId = authorization.userId;
 
-    const month = parseAiUsageMonth(request.nextUrl.searchParams.get("month"));
-    if (!month) {
+    const parsedMonth = parseAiUsageMonth(request.nextUrl.searchParams.get("month"));
+    if (!parsedMonth) {
       return jsonError(
         "El parametro month debe usar YYYY-MM y no puede ser futuro.",
         400,
       );
     }
+    month = parsedMonth;
 
     const data = await getAdminAiUsage(month);
 
     if (request.nextUrl.searchParams.get("format") === "csv") {
       const csv = createAdminAiUsageCsv(data);
       const fileDate = data.generatedAt.slice(0, 10);
+      await writeAdminWebLog({
+        level: "info",
+        functionName: "admin-ai",
+        eventName: "admin_ai_usage_exported",
+        userId: actorUserId,
+        message: "Exportacion CSV de uso IA generada desde el panel admin.",
+        metadata: { month },
+      });
 
       return new NextResponse(`\uFEFF${csv}`, {
         status: 200,
@@ -65,7 +82,15 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "no-store",
       },
     });
-  } catch {
+  } catch (cause) {
+    await writeAdminWebExceptionLog({
+      functionName: "admin-ai",
+      eventName: "admin_ai_usage_load_failed",
+      userId: actorUserId || undefined,
+      message: "Fallo inesperado cargando el uso de IA.",
+      metadata: { month: month || null },
+      error: cause,
+    });
     return jsonError(GENERIC_ERROR_MESSAGE, 500);
   }
 }

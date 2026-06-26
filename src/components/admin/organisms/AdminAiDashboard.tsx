@@ -21,6 +21,7 @@ import {
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
+import { useAdminHeaderActions } from "../templates/AdminShell";
 
 type LoadingState = "idle" | "loading" | "refreshing";
 
@@ -233,7 +234,7 @@ export function AdminAiDashboard() {
     setMonth(nextMonth);
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setLoadingState("refreshing");
     setErrorMessage("");
 
@@ -248,9 +249,9 @@ export function AdminAiDashboard() {
 
     setData(result.data);
     setLoadingState("idle");
-  };
+  }, [handleAuthorizationError, month]);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     if (isExporting) {
       return;
     }
@@ -269,7 +270,43 @@ export function AdminAiDashboard() {
 
     downloadBlob(result.blob, result.filename);
     setIsExporting(false);
-  };
+  }, [handleAuthorizationError, isExporting, month]);
+
+  const headerActions = useMemo(
+    () => (
+      <>
+        <button
+          type="button"
+          title="Actualizar datos"
+          onClick={() => void handleRefresh()}
+          disabled={loadingState !== "idle"}
+          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm font-semibold text-(--color-muted) transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RefreshCw
+            size={15}
+            className={loadingState === "refreshing" ? "animate-spin" : ""}
+          />
+          Actualizar
+        </button>
+        <button
+          type="button"
+          title="Descargar CSV"
+          onClick={() => void handleExport()}
+          disabled={isExporting}
+          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-3 text-sm font-semibold text-(--color-accent-contrast) transition-colors hover:bg-(--color-accent-strong) disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isExporting ? (
+            <RefreshCw size={15} className="animate-spin" />
+          ) : (
+            <Download size={15} />
+          )}
+          CSV
+        </button>
+      </>
+    ),
+    [handleExport, handleRefresh, isExporting, loadingState],
+  );
+  useAdminHeaderActions(headerActions);
 
   const maxDailyCost = useMemo(
     () =>
@@ -312,35 +349,6 @@ export function AdminAiDashboard() {
           />
         </label>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            title="Actualizar datos"
-            onClick={() => void handleRefresh()}
-            disabled={loadingState !== "idle"}
-            className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface) px-4 text-sm font-semibold transition-colors hover:bg-(--color-surface-2) disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw
-              size={16}
-              className={loadingState === "refreshing" ? "animate-spin" : ""}
-            />
-            Actualizar
-          </button>
-          <button
-            type="button"
-            title="Descargar CSV"
-            onClick={() => void handleExport()}
-            disabled={isExporting}
-            className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg bg-(--color-accent) px-4 text-sm font-semibold text-(--color-accent-contrast) transition-colors hover:bg-(--color-accent-strong) disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isExporting ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-            CSV
-          </button>
-        </div>
       </section>
 
       {errorMessage ? (

@@ -7,6 +7,30 @@ export type AdminLogsSourceState = {
   message?: string;
 };
 
+export type AdminSentryIssue = {
+  id: string;
+  title: string;
+  level: AdminLogLevel;
+  project: string;
+  firstSeen: string;
+  lastSeen: string;
+  count: number;
+  url: string;
+};
+
+export type AdminSentryProjectSummary = {
+  project: string;
+  unresolvedIssues: number;
+  recentIssues: number;
+  newIssues: number;
+  issues: AdminSentryIssue[];
+};
+
+export type AdminSentrySummary = {
+  projects: AdminSentryProjectSummary[];
+  generatedAt: string;
+};
+
 export type AdminLogEntry = {
   id: string;
   timestamp: string;
@@ -16,11 +40,13 @@ export type AdminLogEntry = {
   eventName: string;
   userId?: string;
   userLabel: string;
+  device: string | null;
   executionId: string;
   statusCode: number | null;
   durationMs: number | null;
   aiCostUsd: number | null;
   sentryEventId: string | null;
+  sentryUrl: string | null;
   message: string;
 };
 
@@ -64,6 +90,7 @@ export type AdminLogsResponse = {
   };
   entries: AdminLogEntry[];
   byFunction: AdminLogsFunctionSummary[];
+  sentrySummary: AdminSentrySummary | null;
   warnings: string[];
 };
 

@@ -1,15 +1,17 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   BrainCircuit,
+  ChevronUp,
   CircleHelp,
   LayoutDashboard,
+  LogOut,
   Menu,
   ScrollText,
   Settings,
@@ -17,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { AdminFeedbackProvider } from "../molecules/AdminFeedbackProvider";
+import { logoutCurrentSession } from "@/src/lib/appwrite/auth";
 
 type AdminShellProps = {
   title: string;
@@ -26,6 +29,13 @@ type AdminShellProps = {
   actions?: ReactNode;
   isRightPanelOpen?: boolean;
 };
+
+type AdminHeaderActionsContextValue = {
+  setActions: (actions: ReactNode) => void;
+};
+
+const AdminHeaderActionsContext =
+  createContext<AdminHeaderActionsContextValue | null>(null);
 
 const adminTheme: CSSProperties & Record<string, string> = {
   "--color-bg": "#080f1f",
@@ -72,7 +82,7 @@ const systemItems = [
     icon: Settings,
     disabled: true,
   },
-  { href: "/admin/team", label: "Equipo", icon: Users, disabled: true },
+  { href: "/admin/equipo", label: "Equipo", icon: Users },
 ];
 
 function getInitials(label: string) {
@@ -96,7 +106,20 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const initials = getInitials(userLabel);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logoutCurrentSession();
+    } finally {
+      router.replace("/login");
+      onNavigate?.();
+    }
+  };
 
   const renderItem = (item: (typeof menuItems)[number]) => {
     const Icon = item.icon;
@@ -184,16 +207,61 @@ function SidebarContent({
         <nav className="mt-3 grid gap-1">{systemItems.map(renderItem)}</nav>
       </div>
 
-      <div className="border-t border-(--color-border) p-3">
-        <div className="flex items-center gap-3 rounded-lg bg-(--color-surface-2) p-3">
+      <div className="relative border-t border-(--color-border) p-3">
+        <button
+          type="button"
+          title="Abrir menu de usuario"
+          onClick={() => setIsUserMenuOpen((value) => !value)}
+          className={`flex w-full cursor-pointer items-center gap-3 rounded-lg bg-(--color-surface-2) p-3 text-left transition-colors hover:bg-[#243653] ${
+            isUserMenuOpen ? "ring-1 ring-(--color-border)" : ""
+          }`}
+          aria-expanded={isUserMenuOpen}
+        >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-(--color-accent) text-xs font-bold text-(--color-accent-contrast)">
             {initials}
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{userLabel}</p>
             <p className="text-xs text-(--color-muted)">Super Admin</p>
           </div>
-        </div>
+          <ChevronUp
+            size={15}
+            className={`shrink-0 text-(--color-muted) transition-transform ${
+              isUserMenuOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {isUserMenuOpen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Cerrar menu de usuario"
+              className="fixed inset-0 z-10 cursor-default"
+              onClick={() => setIsUserMenuOpen(false)}
+              tabIndex={-1}
+            />
+            <div className="absolute right-3 bottom-[72px] left-3 z-20 overflow-hidden rounded-lg border border-(--color-border) bg-[#121f34] shadow-[0_18px_42px_rgba(0,0,0,0.45)]">
+              <div className="border-b border-(--color-border) px-3 py-3">
+                <p className="truncate text-sm font-bold">{userLabel}</p>
+                <p className="mt-0.5 text-xs text-(--color-muted)">
+                  Panel administrativo
+                </p>
+              </div>
+              <div className="p-1">
+                <button
+                  type="button"
+                  title="Cerrar sesion"
+                  onClick={() => void handleLogout()}
+                  disabled={isLoggingOut}
+                  className="flex h-10 w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 text-left text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200 disabled:cursor-wait disabled:opacity-70"
+                >
+                  <LogOut size={16} />
+                  {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -208,13 +276,21 @@ export function AdminShell({
   isRightPanelOpen = false,
 }: AdminShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dynamicActions, setDynamicActions] = useState<ReactNode>(null);
+  const headerActionsContext = useMemo(
+    () => ({ setActions: setDynamicActions }),
+    [],
+  );
 
   return (
     <AdminFeedbackProvider>
-      <div
-        style={adminTheme}
-        className="min-h-screen bg-(--color-bg) text-foreground"
+      <AdminHeaderActionsContext.Provider
+        value={headerActionsContext}
       >
+        <div
+          style={adminTheme}
+          className="min-h-screen bg-(--color-bg) text-foreground"
+        >
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-[210px] border-r border-(--color-border) bg-(--color-surface) lg:block">
           <SidebarContent userLabel={userLabel} />
         </aside>
@@ -269,7 +345,12 @@ export function AdminShell({
                 </p>
               </div>
             </div>
-            {actions ? <div className="shrink-0">{actions}</div> : null}
+            {actions || dynamicActions ? (
+              <div className="flex shrink-0 items-center gap-2">
+                {actions}
+                {dynamicActions}
+              </div>
+            ) : null}
           </header>
 
           <div
@@ -277,8 +358,21 @@ export function AdminShell({
           >
             {children}
           </div>
-        </main>
-      </div>
+          </main>
+        </div>
+      </AdminHeaderActionsContext.Provider>
     </AdminFeedbackProvider>
   );
+}
+
+export function useAdminHeaderActions(actions: ReactNode) {
+  const context = useContext(AdminHeaderActionsContext);
+  if (!context)
+    throw new Error(
+      "useAdminHeaderActions must be used inside AdminShell",
+    );
+  useEffect(() => {
+    context.setActions(actions);
+    return () => context.setActions(null);
+  }, [actions, context]);
 }

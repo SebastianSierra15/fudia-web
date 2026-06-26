@@ -5,6 +5,10 @@ import {
   parseLogsDate,
 } from "@/src/lib/admin-logs/server";
 import {
+  writeAdminWebExceptionLog,
+  writeAdminWebLog,
+} from "@/src/lib/admin-logs/web-logger";
+import {
   readBearerToken,
   validateAdminJwt,
 } from "@/src/lib/auth/admin-server";
@@ -29,24 +33,49 @@ export async function GET(request: NextRequest) {
     return jsonError("Autenticacion requerida.", 401);
   }
 
+  let actorUserId = "";
+  let date = "";
+
   try {
     const authorization = await validateAdminJwt(jwt);
     if (!authorization.success) {
       return jsonError("No tienes acceso a este recurso.", authorization.status);
     }
+    actorUserId = authorization.userId;
 
-    const date = parseLogsDate(request.nextUrl.searchParams.get("date"));
-    if (!date) {
+    const parsedDate = parseLogsDate(request.nextUrl.searchParams.get("date"));
+    if (!parsedDate) {
       return jsonError(
         "El parametro date debe usar YYYY-MM-DD y no puede ser futuro.",
         400,
       );
     }
+    date = parsedDate;
 
-    const data = await getAdminLogs(date);
+    const forceRefresh = request.nextUrl.searchParams.get("refresh") === "1";
+    if (forceRefresh) {
+      await writeAdminWebLog({
+        level: "info",
+        functionName: "admin-logs",
+        eventName: "admin_logs_refreshed",
+        userId: actorUserId,
+        message: "Actualizacion manual del panel de logs.",
+        metadata: { date },
+      });
+    }
+
+    const data = await getAdminLogs(date, forceRefresh);
 
     if (request.nextUrl.searchParams.get("format") === "csv") {
       const csv = createAdminLogsCsv(data);
+      await writeAdminWebLog({
+        level: "info",
+        functionName: "admin-logs",
+        eventName: "admin_logs_exported",
+        userId: actorUserId,
+        message: "Exportacion CSV de logs generada desde el panel admin.",
+        metadata: { date },
+      });
 
       return new NextResponse(`\uFEFF${csv}`, {
         status: 200,
@@ -64,7 +93,15 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "no-store",
       },
     });
-  } catch {
+  } catch (cause) {
+    await writeAdminWebExceptionLog({
+      functionName: "admin-logs",
+      eventName: "admin_logs_load_failed",
+      userId: actorUserId || undefined,
+      message: "Fallo inesperado cargando el panel de logs.",
+      metadata: { date: date || null },
+      error: cause,
+    });
     return jsonError(GENERIC_ERROR_MESSAGE, 500);
   }
 }

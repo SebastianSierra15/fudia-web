@@ -22,7 +22,11 @@ type AdminLogsCsvResult =
 
 const GENERIC_ERROR_MESSAGE = "No se pudo cargar el panel de logs.";
 
-async function requestAdminLogs(date: string, format?: "csv") {
+async function requestAdminLogs(
+  date: string,
+  format?: "csv",
+  forceRefresh = false,
+) {
   const jwt = await createCurrentSessionJwt();
   if (!jwt) {
     return {
@@ -35,6 +39,9 @@ async function requestAdminLogs(date: string, format?: "csv") {
   const searchParams = new URLSearchParams({ date });
   if (format) {
     searchParams.set("format", format);
+  }
+  if (forceRefresh) {
+    searchParams.set("refresh", "1");
   }
 
   try {
@@ -85,8 +92,9 @@ async function requestAdminLogs(date: string, format?: "csv") {
 
 export async function getAdminLogs(
   date: string,
+  forceRefresh = false,
 ): Promise<AdminLogsRequestResult> {
-  const result = await requestAdminLogs(date);
+  const result = await requestAdminLogs(date, undefined, forceRefresh);
   if (!result.success) {
     return result;
   }

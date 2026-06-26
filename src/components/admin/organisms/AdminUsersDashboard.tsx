@@ -31,6 +31,7 @@ import {
 } from "@/src/lib/appwrite/admin-users";
 import { AdminConfirmModal } from "../molecules/AdminConfirmModal";
 import { useAdminFeedback } from "../molecules/AdminFeedbackProvider";
+import { useAdminHeaderActions } from "../templates/AdminShell";
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 
@@ -402,7 +403,7 @@ export function AdminUsersDashboard({
       [key]: value,
       page: key === "page" ? Number(value) : 1,
     }));
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     showLoading("Generando archivo CSV...");
     try {
       const result = await getAdminUsersCsv(query);
@@ -414,7 +415,7 @@ export function AdminUsersDashboard({
     } finally {
       hideLoading();
     }
-  };
+  }, [handleError, hideLoading, query, showLoading, showToast]);
   const handleChange = async (
     field: "plan" | "status",
     value: AdminUserPlan | AdminUserAccountStatus,
@@ -531,10 +532,9 @@ export function AdminUsersDashboard({
     [data?.pagination, query.pageSize],
   );
 
-  if (loading && !data) return <DashboardSkeleton />;
-  return (
-    <div className="space-y-5">
-      <section className="fixed top-3 right-4 z-40 flex flex-row items-center justify-end gap-2 md:right-7 md:gap-3">
+  const headerActions = useMemo(
+    () => (
+      <>
         <button
           type="button"
           title="Actualizar usuarios"
@@ -553,7 +553,15 @@ export function AdminUsersDashboard({
           <Download size={14} />
           CSV
         </button>
-      </section>
+      </>
+    ),
+    [handleExport, load, query],
+  );
+  useAdminHeaderActions(headerActions);
+
+  if (loading && !data) return <DashboardSkeleton />;
+  return (
+    <div className="space-y-5">
       {data ? (
         <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

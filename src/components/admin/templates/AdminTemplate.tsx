@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ADMIN_AUTHORIZE_PATH, ADMIN_HOME_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { getCurrentUser, syncAdminAccessSession } from "@/src/lib/appwrite/auth";
-import { AdminFinanceSection } from "../organisms/AdminFinanceSection";
+import { AdminDashboard } from "../organisms/AdminDashboard";
 import { AdminShell } from "./AdminShell";
 
 type AccessStatus = "checking" | "allowed";
@@ -56,55 +56,30 @@ export function AdminTemplate() {
 
   if (status === "checking") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#080f1f] px-6 text-white">
-        <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-[#22324d] bg-[#101a2d] px-8 py-7 text-center shadow-[0_20px_48px_rgba(0,0,0,0.2)]">
+      <AdminShell
+        title="Panel de Administracion"
+        subtitle="Resumen de actividad y decisiones"
+        userLabel={userLabel}
+      >
+        <div className="flex min-h-[360px] items-center justify-center">
+          <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-(--color-border) bg-(--color-surface) px-8 py-7 text-center">
           <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#a3e467] border-t-transparent" />
-          <p className="text-sm text-[#9fb0c7]">
+          <p className="text-sm text-(--color-muted)">
             Cargando panel administrativo...
           </p>
+          </div>
         </div>
-      </main>
+      </AdminShell>
     );
   }
 
   return (
     <AdminShell
-      title="Dashboard"
-      subtitle="Resumen · Finanzas · Administracion"
+      title="Panel de Administracion"
+      subtitle="Resumen de actividad y decisiones"
       userLabel={userLabel}
     >
-      <section className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5 shadow-[0_20px_48px_rgba(0,0,0,0.15)] md:p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
-          Panel admin
-        </p>
-        <h2 className="mt-2 text-2xl font-bold md:text-3xl">
-          Bienvenido, {userLabel}
-        </h2>
-        <p className="mt-3 max-w-3xl text-sm text-(--color-muted) md:text-base">
-          El acceso esta protegido por autenticacion y validacion del team Admin
-          de Appwrite. Este panel consolida finanzas, IA y observabilidad.
-        </p>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {[
-            ["Estado", "Acceso habilitado"],
-            ["Fuente de permisos", "Appwrite Teams"],
-            ["Proxima iteracion", "Dashboard de negocio"],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-lg border border-(--color-border) bg-(--color-surface-2) p-5"
-            >
-              <p className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">
-                {label}
-              </p>
-              <p className="mt-2 text-lg font-semibold">{value}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <AdminFinanceSection />
+      <AdminDashboard />
     </AdminShell>
   );
 }

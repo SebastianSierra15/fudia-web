@@ -20,6 +20,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (request.nextUrl.pathname.startsWith("/admin/equipo/invitacion")) {
+    return NextResponse.next();
+  }
+
   const hasAdminCookie = Boolean(
     request.cookies.get(ADMIN_ACCESS_COOKIE_NAME)?.value,
   );

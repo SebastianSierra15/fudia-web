@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ClipboardList,
   Download,
+  ExternalLink,
   MinusCircle,
   RefreshCw,
   Search,
@@ -25,6 +26,8 @@ import {
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
+import { AdminLogDetailDrawer } from "./AdminLogDetailDrawer";
+import { useAdminHeaderActions } from "../templates/AdminShell";
 
 type LoadingState = "idle" | "loading" | "refreshing";
 type LevelFilter = "all" | AdminLogLevel;
@@ -195,7 +198,11 @@ function AdminLogsSkeleton() {
   );
 }
 
-export function AdminLogsDashboard() {
+export function AdminLogsDashboard({
+  onDetailOpenChange,
+}: {
+  onDetailOpenChange: (isOpen: boolean) => void;
+}) {
   const router = useRouter();
   const [currentDate] = useState(getCurrentUtcDate);
   const [date, setDate] = useState(currentDate);
@@ -207,6 +214,20 @@ export function AdminLogsDashboard() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [functionFilter, setFunctionFilter] = useState("all");
+  const [selectedEntry, setSelectedEntry] = useState<AdminLogEntry | null>(null);
+
+  const selectEntry = useCallback(
+    (entry: AdminLogEntry) => {
+      setSelectedEntry(entry);
+      onDetailOpenChange(true);
+    },
+    [onDetailOpenChange],
+  );
+
+  const closeDetail = useCallback(() => {
+    setSelectedEntry(null);
+    onDetailOpenChange(false);
+  }, [onDetailOpenChange]);
 
   const handleAuthorizationError = useCallback(
     (code: "NO_SESSION" | "FORBIDDEN" | "REQUEST_ERROR") => {
@@ -289,11 +310,11 @@ export function AdminLogsDashboard() {
     setDate(nextDate);
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setErrorMessage("");
     setLoadingState("refreshing");
 
-    const result = await getAdminLogs(date);
+    const result = await getAdminLogs(date, true);
     if (!result.success) {
       if (!handleAuthorizationError(result.code)) {
         setErrorMessage(result.message);
@@ -304,9 +325,9 @@ export function AdminLogsDashboard() {
 
     setData(result.data);
     setLoadingState("idle");
-  };
+  }, [date, handleAuthorizationError]);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     if (isExporting) {
       return;
     }
@@ -325,18 +346,14 @@ export function AdminLogsDashboard() {
 
     downloadBlob(result.blob, result.filename);
     setIsExporting(false);
-  };
+  }, [date, handleAuthorizationError, isExporting]);
 
-  if (loadingState === "loading" && !data) {
-    return <AdminLogsSkeleton />;
-  }
-
-  return (
-    <div className="space-y-5">
-      {data ? (
-        <section className="relative z-40 flex flex-col gap-3 md:-mt-[58px] md:mb-6 md:min-h-10 md:flex-row md:items-center md:justify-end">
+  const headerActions = useMemo(
+    () =>
+      data ? (
+        <>
           <div
-            className={`inline-flex h-8 items-center justify-between gap-3 rounded-lg border px-4 text-sm font-semibold ${getPillStateClassName(
+            className={`hidden h-8 items-center justify-between gap-3 rounded-lg border px-4 text-sm font-semibold md:inline-flex ${getPillStateClassName(
               data.sources.appwriteExecutions.status,
             )}`}
           >
@@ -346,7 +363,7 @@ export function AdminLogsDashboard() {
             </span>
           </div>
           <div
-            className={`inline-flex h-8 items-center justify-between gap-3 rounded-lg border px-4 text-sm font-semibold ${getPillStateClassName(
+            className={`hidden h-8 items-center justify-between gap-3 rounded-lg border px-4 text-sm font-semibold md:inline-flex ${getPillStateClassName(
               data.summary.reactNativeLogs > 0 ? "ok" : "partial",
             )}`}
           >
@@ -355,7 +372,7 @@ export function AdminLogsDashboard() {
               {integerFormatter.format(data.summary.reactNativeLogs)}
             </span>
           </div>
-          <div className="inline-flex h-8 items-center gap-3 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-4 text-sm text-(--color-muted)">
+          <div className="hidden h-8 items-center gap-3 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-4 text-sm text-(--color-muted) lg:inline-flex">
             <span>Costo IA hoy</span>
             <strong className="text-(--color-accent)">
               {usdFormatter.format(data.summary.aiCostUsd)}
@@ -387,9 +404,18 @@ export function AdminLogsDashboard() {
             )}
             CSV
           </button>
-        </section>
-      ) : null}
+        </>
+      ) : null,
+    [data, handleExport, handleRefresh, isExporting, loadingState],
+  );
+  useAdminHeaderActions(headerActions);
 
+  if (loadingState === "loading" && !data) {
+    return <AdminLogsSkeleton />;
+  }
+
+  return (
+    <div className="space-y-5">
       {errorMessage ? (
         <div
           role="alert"
@@ -532,13 +558,9 @@ export function AdminLogsDashboard() {
               </select>
             </div>
 
-            <div
-              className={`overflow-x-auto ${
-                filteredEntries.length > 0 ? "min-h-[420px] md:min-h-0" : ""
-              }`}
-            >
+            <div className="min-h-[460px] max-h-[640px] overflow-auto overscroll-contain">
               <table className="w-full min-w-[1180px] text-left">
-                <thead className="border-b border-(--color-border) bg-[#17233a]">
+              <thead className="border-b border-(--color-border) bg-[#17233a]">
                   <tr>
                     {[
                       "Timestamp",
@@ -553,7 +575,7 @@ export function AdminLogsDashboard() {
                     ].map((label) => (
                       <th
                         key={label}
-                        className="px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-(--color-muted-2)"
+                          className="sticky top-0 z-10 bg-[#17233a] px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-(--color-muted-2)"
                       >
                         {label}
                       </th>
@@ -574,7 +596,16 @@ export function AdminLogsDashboard() {
                     filteredEntries.map((entry) => (
                       <tr
                         key={`${entry.source}-${entry.id}`}
-                        className={`border-b border-(--color-border) ${
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectEntry(entry)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            selectEntry(entry);
+                          }
+                        }}
+                        className={`cursor-pointer border-b border-(--color-border) transition-colors hover:bg-white/4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-(--color-accent) ${
                           entry.level === "error"
                             ? "bg-red-500/7"
                             : "bg-transparent"
@@ -693,8 +724,66 @@ export function AdminLogsDashboard() {
               </div>
             </div>
           </section>
+
+          <section className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-(--color-muted)">
+                  Estado de Sentry
+                </p>
+                <p className="mt-1 text-sm text-(--color-muted)">
+                  Issues no resueltos e investigacion tecnica.
+                </p>
+              </div>
+              <AdminSourceBadge status={data.sources.sentry.status} />
+            </div>
+            {data.sentrySummary ? (
+              <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                {data.sentrySummary.projects.map((project) => (
+                  <div key={project.project} className="rounded-lg bg-(--color-surface-2) p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold">{project.project}</p>
+                      <span className="text-xs text-(--color-muted)">
+                        {project.unresolvedIssues} abiertos
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-(--color-muted)">
+                      {project.recentIssues} vistos en 24 h · {project.newIssues} nuevos
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      {project.issues.length === 0 ? (
+                        <p className="text-sm text-(--color-muted)">Sin Issues abiertos.</p>
+                      ) : (
+                        project.issues.map((issue) => (
+                          <a
+                            key={issue.id}
+                            href={issue.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`Abrir ${issue.title} en Sentry`}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-(--color-border) px-3 py-2 text-sm transition-colors hover:border-(--color-accent)/50"
+                          >
+                            <span className="min-w-0 truncate">{issue.title}</span>
+                            <ExternalLink size={14} className="shrink-0 text-(--color-muted)" />
+                          </a>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-lg border border-dashed border-(--color-border) p-4 text-sm text-(--color-muted)">
+                Sentry no esta disponible para lectura desde el panel.
+              </p>
+            )}
+          </section>
         </>
       ) : null}
+      <AdminLogDetailDrawer
+        entry={selectedEntry}
+        onClose={closeDetail}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import type {
   AdminLogsResponse,
   AdminLogsSourceState,
 } from "./types";
+import { getAdminSentrySummary } from "./sentry";
 
 type AppwriteFunction = {
   $id: string;
@@ -407,6 +408,7 @@ function mapExecutionToEntry(
     eventName: `${method} ${path}`,
     userId: userId || undefined,
     userLabel: formatUserFallback(userId),
+    device: null,
     executionId: execution.$id,
     statusCode:
       execution.responseStatusCode === undefined
@@ -418,6 +420,7 @@ function mapExecutionToEntry(
         : Math.round(toFiniteNumber(execution.duration)),
     aiCostUsd: null,
     sentryEventId: null,
+    sentryUrl: null,
     message: getExecutionMessage(execution),
   };
 }
@@ -469,6 +472,12 @@ function normalizeLogSource(value: string | undefined): AdminLogEntry["source"] 
   return "appwrite";
 }
 
+function getSentryEventUrl(eventId: string | undefined) {
+  const organization = process.env.SENTRY_ORG_SLUG;
+  if (!eventId || !organization) return null;
+  return `https://sentry.io/organizations/${encodeURIComponent(organization)}/issues/?query=${encodeURIComponent(eventId)}`;
+}
+
 function mapSystemLogToEntry(document: SystemLogDocument): AdminLogEntry {
   const userLabel =
     document.userId ? formatUserFallback(document.userId) : document.device || "sin usuario";
@@ -482,6 +491,7 @@ function mapSystemLogToEntry(document: SystemLogDocument): AdminLogEntry {
     eventName: document.eventName || "evento",
     userId: document.userId || undefined,
     userLabel,
+    device: document.device || null,
     executionId: document.executionId || "-",
     statusCode:
       document.statusCode === undefined
@@ -496,6 +506,7 @@ function mapSystemLogToEntry(document: SystemLogDocument): AdminLogEntry {
         ? null
         : round(toFiniteNumber(document.aiCostUsd), 6),
     sentryEventId: document.sentryEventId || null,
+    sentryUrl: getSentryEventUrl(document.sentryEventId),
     message: document.message || "Evento registrado",
   };
 }
@@ -691,12 +702,16 @@ function summarizeByFunction(entries: AdminLogEntry[]) {
     }));
 }
 
-export async function getAdminLogs(date: string): Promise<AdminLogsResponse> {
+export async function getAdminLogs(
+  date: string,
+  forceRefresh = false,
+): Promise<AdminLogsResponse> {
   const range = buildLogsRange(date);
-  const [executionResult, systemLogsResult, aiCostResult] = await Promise.all([
+  const [executionResult, systemLogsResult, aiCostResult, sentryResult] = await Promise.all([
     fetchAppwriteExecutionEntries(range),
     fetchSystemLogEntries(range),
     fetchAiCostForDay(range),
+    getAdminSentrySummary(forceRefresh),
   ]);
   const executionEntries = executionResult.success ? executionResult.value : [];
   const systemEntries = systemLogsResult.success ? systemLogsResult.value : [];
@@ -715,6 +730,9 @@ export async function getAdminLogs(date: string): Promise<AdminLogsResponse> {
   }
   if (aiCostResult.state?.status !== "ok" && aiCostResult.state?.message) {
     warnings.push(aiCostResult.state.message);
+  }
+  if (sentryResult.state.status !== "ok" && sentryResult.state.message) {
+    warnings.push(sentryResult.state.message);
   }
 
   const errors = entries.filter((entry) => entry.level === "error").length;
@@ -746,19 +764,12 @@ export async function getAdminLogs(date: string): Promise<AdminLogsResponse> {
     sources: {
       appwriteExecutions: executionResult.state ?? { status: "ok" },
       systemLogs: systemLogsResult.state ?? { status: "ok" },
-      sentry: process.env.SENTRY_DSN_WEB
-        ? {
-            status: "partial",
-            message: "Sentry esta conectado; la lectura API no esta configurada.",
-          }
-        : {
-            status: "unavailable",
-            message: "Sentry no esta configurado para lectura admin.",
-          },
+      sentry: sentryResult.state,
       aiTelemetry: aiCostResult.state ?? { status: "ok" },
     },
     entries,
     byFunction: summarizeByFunction(entries),
+    sentrySummary: sentryResult.summary,
     warnings,
   };
 }

@@ -13,6 +13,7 @@ import {
   APPWRITE_ADMIN_TEAM_ID,
   APPWRITE_PREMIUM_TEAM_ID,
 } from "@/src/lib/auth/admin";
+import { writeAdminWebLog } from "@/src/lib/admin-logs/web-logger";
 
 type AppwriteDocument = Record<string, unknown> & { $id: string };
 type DocumentPage = { documents?: AppwriteDocument[]; total?: number };
@@ -376,36 +377,14 @@ async function writeSystemLog(
   targetUserId: string,
   message: string,
 ) {
-  const config = getConfig();
-  const collectionId =
-    process.env.APPWRITE_SYSTEM_LOGS_COLLECTION_ID ??
-    process.env.SYSTEM_LOGS_COLLECTION_ID ??
-    "system_logs";
-  if (!config) return;
-  try {
-    await request(
-      `/databases/${encodeURIComponent(config.databaseId)}/collections/${encodeURIComponent(collectionId)}/documents`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          documentId: `admin_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-          data: {
-            level: "info",
-            source: "web",
-            functionName: "admin-users",
-            eventName,
-            userId: targetUserId,
-            message,
-            metadata: JSON.stringify({ actorUserId }),
-            occurredAt: new Date().toISOString(),
-          },
-          permissions: [],
-        }),
-      },
-    );
-  } catch {
-    return;
-  }
+  await writeAdminWebLog({
+    level: "info",
+    functionName: "admin-users",
+    eventName,
+    userId: targetUserId,
+    message,
+    metadata: { actorUserId },
+  });
 }
 
 async function assertMutableUser(userId: string, actorUserId: string) {
@@ -506,6 +485,16 @@ export async function runAdminUserAction(
   if (response.responseStatusCode !== 200 || !payload?.success) {
     if (payload?.error === "WHATSAPP_NO_CONFIGURADO")
       throw new Error("WHATSAPP_NOT_CONFIGURED");
+    if (payload?.error === "USUARIO_SIN_EMAIL")
+      throw new Error("USER_EMAIL_NOT_AVAILABLE");
+    if (payload?.error === "ACCION_INVALIDA")
+      throw new Error("INVALID_ACTION");
+    if (payload?.error === "PERMISOS_INSUFICIENTES")
+      throw new Error("ACTION_PERMISSIONS_MISSING");
+    if (payload?.error === "USUARIO_NO_ENCONTRADO")
+      throw new Error("ACTION_USER_NOT_FOUND");
+    if (payload?.error === "PROVEEDOR_EMAIL_NO_DISPONIBLE")
+      throw new Error("EMAIL_PROVIDER_UNAVAILABLE");
     throw new Error("ACTION_FAILED");
   }
   await writeSystemLog(
