@@ -6,7 +6,7 @@ let teamsInstance: Teams | null = null;
 let databasesInstance: Databases | null = null;
 
 const GENERIC_CONFIG_ERROR_MESSAGE =
-  "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
+  "Ocurrio un error al iniciar sesión. Intenta mas tarde.";
 
 function getAppwriteConfig() {
   const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;

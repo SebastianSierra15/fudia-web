@@ -1,8 +1,8 @@
 import type {
-  AdminTeamErrorResponse,
-  AdminTeamResponse,
-  AdminTeamRoleKey,
-} from "@/src/lib/admin-team/types";
+  AdminSettings,
+  AdminSettingsErrorResponse,
+  AdminSettingsResponse,
+} from "@/src/lib/admin-settings/types";
 import { createCurrentSessionJwt } from "./auth";
 
 type RequestFailure = {
@@ -12,10 +12,9 @@ type RequestFailure = {
 };
 type RequestSuccess<T> = { success: true; data: T };
 
-const GENERIC_ERROR_MESSAGE = "No se pudo cargar el equipo administrativo.";
+const GENERIC_ERROR_MESSAGE = "No se pudo cargar la configuracion.";
 
 async function request<T>(
-  path: string,
   init?: RequestInit,
 ): Promise<RequestSuccess<T> | RequestFailure> {
   const jwt = await createCurrentSessionJwt();
@@ -23,7 +22,7 @@ async function request<T>(
     return { success: false, code: "NO_SESSION", message: "Tu sesión expiro." };
 
   try {
-    const response = await fetch(path, {
+    const response = await fetch("/api/admin/settings", {
       ...init,
       headers: {
         Authorization: `Bearer ${jwt}`,
@@ -32,32 +31,30 @@ async function request<T>(
       },
       cache: "no-store",
     });
+
     if (response.status === 401)
       return {
         success: false,
         code: "NO_SESSION",
         message: "Tu sesión expiro.",
       };
-    if (response.status === 403) {
-      const payload = (await response
-        .json()
-        .catch(() => null)) as AdminTeamErrorResponse | null;
+    if (response.status === 403)
       return {
         success: false,
         code: "FORBIDDEN",
-        message: payload?.message ?? "No tienes acceso al panel de equipo.",
+        message: "No tienes acceso a la configuracion.",
       };
-    }
     if (!response.ok) {
       const payload = (await response
         .json()
-        .catch(() => null)) as AdminTeamErrorResponse | null;
+        .catch(() => null)) as AdminSettingsErrorResponse | null;
       return {
         success: false,
         code: "REQUEST_ERROR",
         message: payload?.message ?? GENERIC_ERROR_MESSAGE,
       };
     }
+
     return { success: true, data: (await response.json()) as T };
   } catch {
     return {
@@ -68,25 +65,13 @@ async function request<T>(
   }
 }
 
-export function getAdminTeam() {
-  return request<AdminTeamResponse>("/api/admin/team");
+export function getAdminSettings() {
+  return request<AdminSettingsResponse>();
 }
 
-export function inviteAdminTeamMember(email: string, role: AdminTeamRoleKey) {
-  return request<{ success: true }>("/api/admin/team/invitations", {
-    method: "POST",
-    body: JSON.stringify({ email, role }),
-  });
-}
-
-export function acceptAdminTeamInvitation(input: {
-  teamId: string;
-  membershipId: string;
-  userId: string;
-  secret: string;
-}) {
-  return request<{ success: true }>("/api/admin/team/invitations/accept", {
-    method: "POST",
-    body: JSON.stringify(input),
+export function saveAdminSettings(settings: AdminSettings) {
+  return request<AdminSettingsResponse>({
+    method: "PUT",
+    body: JSON.stringify({ settings }),
   });
 }

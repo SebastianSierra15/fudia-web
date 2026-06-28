@@ -22,16 +22,13 @@ type AiUsageCsvResult =
 
 const GENERIC_ERROR_MESSAGE = "No se pudo cargar el panel de IA.";
 
-async function requestAiUsage(
-  month: string,
-  format?: "csv",
-) {
+async function requestAiUsage(month: string, format?: "csv") {
   const jwt = await createCurrentSessionJwt();
   if (!jwt) {
     return {
       success: false as const,
       code: "NO_SESSION" as const,
-      message: "Tu sesion expiro.",
+      message: "Tu sesión expiro.",
     };
   }
 
@@ -56,7 +53,7 @@ async function requestAiUsage(
       return {
         success: false as const,
         code: "NO_SESSION" as const,
-        message: "Tu sesion expiro.",
+        message: "Tu sesión expiro.",
       };
     }
 

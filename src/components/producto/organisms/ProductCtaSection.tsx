@@ -1,7 +1,7 @@
 "use client";
 
-import { Play, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
+import { AppStoreLogo, GooglePlayLogo } from "@/src/components/shared/atoms/StoreLogos";
 import { StoreDownloadButton } from "@/src/components/shared/molecules/StoreDownloadButton";
 import { Container } from "@/src/components/shared/atoms/Container";
 
@@ -30,12 +30,12 @@ export function ProductCtaSection() {
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <StoreDownloadButton
-              icon={Smartphone}
+              icon={<AppStoreLogo className="size-5" />}
               label="Descargar en App Store"
               className="border-[#1d2d58] bg-[#071633] text-white hover:bg-[#102450] [&_svg]:text-(--color-accent)"
             />
             <StoreDownloadButton
-              icon={Play}
+              icon={<GooglePlayLogo className="size-5" />}
               label="Google Play"
               className="border-black/15 bg-(--color-accent) text-(--color-accent-contrast) hover:bg-[#a9e96b]"
             />

@@ -1,15 +1,14 @@
-import type { LucideIcon } from "lucide-react";
-import type { AnchorHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 type StoreDownloadButtonProps = {
-  icon: LucideIcon;
+  icon: ReactNode;
   label: string;
   href?: string;
   className?: string;
 } & AnchorHTMLAttributes<HTMLAnchorElement>;
 
 export function StoreDownloadButton({
-  icon: Icon,
+  icon,
   label,
   href = "#",
   className = "",
@@ -23,7 +22,9 @@ export function StoreDownloadButton({
       className={`inline-flex h-14 min-w-56 items-center justify-center gap-2.5 rounded-2xl border px-6 text-lg font-semibold transition-colors ${className}`}
       {...rest}
     >
-      <Icon size={21} strokeWidth={2.2} />
+      <span className="flex size-6 shrink-0 items-center justify-center">
+        {icon}
+      </span>
       {label}
     </a>
   );

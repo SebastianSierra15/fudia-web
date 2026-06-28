@@ -18,7 +18,7 @@ export async function getAdminDashboard(
 ): Promise<DashboardResult> {
   const jwt = await createCurrentSessionJwt();
   if (!jwt) {
-    return { success: false, code: "NO_SESSION", message: "Tu sesion expiro." };
+    return { success: false, code: "NO_SESSION", message: "Tu sesión expiro." };
   }
 
   try {
@@ -29,15 +29,36 @@ export async function getAdminDashboard(
       cache: "no-store",
     });
     if (response.status === 401)
-      return { success: false, code: "NO_SESSION", message: "Tu sesion expiro." };
+      return {
+        success: false,
+        code: "NO_SESSION",
+        message: "Tu sesión expiro.",
+      };
     if (response.status === 403)
-      return { success: false, code: "FORBIDDEN", message: "No tienes acceso al panel." };
+      return {
+        success: false,
+        code: "FORBIDDEN",
+        message: "No tienes acceso al panel.",
+      };
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as AdminDashboardErrorResponse | null;
-      return { success: false, code: "REQUEST_ERROR", message: payload?.message ?? "No se pudo cargar el dashboard." };
+      const payload = (await response
+        .json()
+        .catch(() => null)) as AdminDashboardErrorResponse | null;
+      return {
+        success: false,
+        code: "REQUEST_ERROR",
+        message: payload?.message ?? "No se pudo cargar el dashboard.",
+      };
     }
-    return { success: true, data: (await response.json()) as AdminDashboardSummary };
+    return {
+      success: true,
+      data: (await response.json()) as AdminDashboardSummary,
+    };
   } catch {
-    return { success: false, code: "REQUEST_ERROR", message: "No se pudo cargar el dashboard." };
+    return {
+      success: false,
+      code: "REQUEST_ERROR",
+      message: "No se pudo cargar el dashboard.",
+    };
   }
 }

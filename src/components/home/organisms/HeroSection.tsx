@@ -1,5 +1,6 @@
-import { Play, Smartphone, Star } from "lucide-react";
+import { Smartphone, Star } from "lucide-react";
 import { Container } from "@/src/components/shared/atoms/Container";
+import { AppStoreLogo, GooglePlayLogo } from "@/src/components/shared/atoms/StoreLogos";
 import { HeroImageCard } from "@/src/components/shared/molecules/HeroImageCard";
 import { StoreDownloadButton } from "@/src/components/shared/molecules/StoreDownloadButton";
 
@@ -31,12 +32,12 @@ export function HeroSection() {
 
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <StoreDownloadButton
-                icon={Smartphone}
+                icon={<AppStoreLogo className="size-5" />}
                 label="App Store"
                 className="w-full border-(--color-accent) bg-(--color-accent) text-(--color-accent-contrast) hover:bg-(--color-accent-strong) sm:w-auto"
               />
               <StoreDownloadButton
-                icon={Play}
+                icon={<GooglePlayLogo className="size-5" />}
                 label="Google Play"
                 className="w-full border-[#2b354e] bg-[#141b2d] text-white hover:bg-[#1c2842] sm:w-auto"
               />

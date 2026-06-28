@@ -11,14 +11,14 @@ type AdminAccessSessionResult =
   | { success: false; code: "NO_SESSION" | "UNAUTHORIZED" | "REQUEST_ERROR" };
 
 const GENERIC_LOGIN_ERROR_MESSAGE =
-  "Ocurrio un error al iniciar sesion. Intenta mas tarde.";
+  "Ocurrio un error al iniciar sesión. Intenta mas tarde.";
 
 function mapLoginError(error: unknown): { code: string; message: string } {
   if (error instanceof AppwriteException) {
     if (error.code === 401 || error.type === "user_invalid_credentials") {
       return {
         code: "INVALID_CREDENTIALS",
-        message: "Correo o contrasena incorrectos.",
+        message: "Correo o contraseña incorrectos.",
       };
     }
 
@@ -98,9 +98,7 @@ export async function startGoogleOAuthLogin(nextPath: string) {
   });
 }
 
-export async function getCurrentUser(): Promise<
-  Models.User<Models.Preferences> | null
-> {
+export async function getCurrentUser(): Promise<Models.User<Models.Preferences> | null> {
   try {
     const account = getAppwriteAccount();
     return await account.get();

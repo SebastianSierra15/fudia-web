@@ -33,7 +33,7 @@ async function request<T>(
 ): Promise<RequestSuccess<T> | RequestFailure> {
   const jwt = await createCurrentSessionJwt();
   if (!jwt)
-    return { success: false, code: "NO_SESSION", message: "Tu sesion expiro." };
+    return { success: false, code: "NO_SESSION", message: "Tu sesión expiro." };
   try {
     const response = await fetch(path, {
       ...init,
@@ -48,7 +48,7 @@ async function request<T>(
       return {
         success: false,
         code: "NO_SESSION",
-        message: "Tu sesion expiro.",
+        message: "Tu sesión expiro.",
       };
     if (response.status === 403)
       return {
@@ -88,7 +88,7 @@ export async function getAdminUsersCsv(query: AdminUsersQuery) {
     return {
       success: false as const,
       code: "NO_SESSION" as const,
-      message: "Tu sesion expiro.",
+      message: "Tu sesión expiro.",
     };
   const params = toSearchParams(query);
   params.set("format", "csv");
@@ -101,7 +101,7 @@ export async function getAdminUsersCsv(query: AdminUsersQuery) {
       return {
         success: false as const,
         code: "NO_SESSION" as const,
-        message: "Tu sesion expiro.",
+        message: "Tu sesión expiro.",
       };
     if (response.status === 403)
       return {

@@ -80,7 +80,6 @@ const systemItems = [
     href: "/admin/settings",
     label: "Configuracion",
     icon: Settings,
-    disabled: true,
   },
   { href: "/admin/equipo", label: "Equipo", icon: Users },
 ];
@@ -250,13 +249,13 @@ function SidebarContent({
               <div className="p-1">
                 <button
                   type="button"
-                  title="Cerrar sesion"
+                  title="Cerrar sesión"
                   onClick={() => void handleLogout()}
                   disabled={isLoggingOut}
                   className="flex h-10 w-full cursor-pointer items-center justify-start gap-3 rounded-md px-3 text-left text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200 disabled:cursor-wait disabled:opacity-70"
                 >
                   <LogOut size={16} />
-                  {isLoggingOut ? "Cerrando..." : "Cerrar sesion"}
+                  {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
                 </button>
               </div>
             </div>
@@ -284,80 +283,78 @@ export function AdminShell({
 
   return (
     <AdminFeedbackProvider>
-      <AdminHeaderActionsContext.Provider
-        value={headerActionsContext}
-      >
+      <AdminHeaderActionsContext.Provider value={headerActionsContext}>
         <div
           style={adminTheme}
           className="min-h-screen bg-(--color-bg) text-foreground"
         >
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-[210px] border-r border-(--color-border) bg-(--color-surface) lg:block">
-          <SidebarContent userLabel={userLabel} />
-        </aside>
-
-        <div
-          className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-200 lg:hidden ${
-            isSidebarOpen
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
-          }`}
-          onClick={() => setIsSidebarOpen(false)}
-        />
-
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[86vw] border-r border-(--color-border) bg-(--color-surface) shadow-[18px_0_50px_rgba(0,0,0,0.35)] transition-transform duration-200 lg:hidden ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <button
-            type="button"
-            title="Cerrar menu"
-            aria-label="Cerrar menu"
-            className="absolute top-3 right-3 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground"
-            onClick={() => setIsSidebarOpen(false)}
-          >
-            <X size={18} />
-          </button>
-          <SidebarContent
-            userLabel={userLabel}
-            onNavigate={() => setIsSidebarOpen(false)}
-          />
-        </aside>
-
-        <main className="min-h-screen lg:pl-[210px]">
-          <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                title="Abrir menu"
-                aria-label="Abrir menu"
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground lg:hidden"
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <Menu size={18} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-bold leading-6">
-                  {title}
-                </h1>
-                <p className="truncate text-xs text-(--color-muted)">
-                  {subtitle}
-                </p>
-              </div>
-            </div>
-            {actions || dynamicActions ? (
-              <div className="flex shrink-0 items-center gap-2">
-                {actions}
-                {dynamicActions}
-              </div>
-            ) : null}
-          </header>
+          <aside className="fixed inset-y-0 left-0 z-40 hidden w-[210px] border-r border-(--color-border) bg-(--color-surface) lg:block">
+            <SidebarContent userLabel={userLabel} />
+          </aside>
 
           <div
-            className={`mx-auto max-w-[1240px] animate-[admin-fade-in_0.28s_ease-out] px-4 py-4 transition-[padding,max-width] duration-300 ease-out md:px-7 ${isRightPanelOpen ? "xl:max-w-none xl:pr-[397px]" : ""}`}
+            className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-200 lg:hidden ${
+              isSidebarOpen
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+            onClick={() => setIsSidebarOpen(false)}
+          />
+
+          <aside
+            className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[86vw] border-r border-(--color-border) bg-(--color-surface) shadow-[18px_0_50px_rgba(0,0,0,0.35)] transition-transform duration-200 lg:hidden ${
+              isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
           >
-            {children}
-          </div>
+            <button
+              type="button"
+              title="Cerrar menu"
+              aria-label="Cerrar menu"
+              className="absolute top-3 right-3 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <X size={18} />
+            </button>
+            <SidebarContent
+              userLabel={userLabel}
+              onNavigate={() => setIsSidebarOpen(false)}
+            />
+          </aside>
+
+          <main className="min-h-screen lg:pl-[210px]">
+            <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  title="Abrir menu"
+                  aria-label="Abrir menu"
+                  className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-(--color-surface-2) text-(--color-muted) hover:text-foreground lg:hidden"
+                  onClick={() => setIsSidebarOpen(true)}
+                >
+                  <Menu size={18} />
+                </button>
+                <div className="min-w-0">
+                  <h1 className="truncate text-xl font-bold leading-6">
+                    {title}
+                  </h1>
+                  <p className="truncate text-xs text-(--color-muted)">
+                    {subtitle}
+                  </p>
+                </div>
+              </div>
+              {actions || dynamicActions ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  {actions}
+                  {dynamicActions}
+                </div>
+              ) : null}
+            </header>
+
+            <div
+              className={`mx-auto max-w-[1240px] animate-[admin-fade-in_0.28s_ease-out] px-4 py-4 transition-[padding,max-width] duration-300 ease-out md:px-7 ${isRightPanelOpen ? "xl:max-w-none xl:pr-[397px]" : ""}`}
+            >
+              {children}
+            </div>
           </main>
         </div>
       </AdminHeaderActionsContext.Provider>
@@ -368,9 +365,7 @@ export function AdminShell({
 export function useAdminHeaderActions(actions: ReactNode) {
   const context = useContext(AdminHeaderActionsContext);
   if (!context)
-    throw new Error(
-      "useAdminHeaderActions must be used inside AdminShell",
-    );
+    throw new Error("useAdminHeaderActions must be used inside AdminShell");
   useEffect(() => {
     context.setActions(actions);
     return () => context.setActions(null);

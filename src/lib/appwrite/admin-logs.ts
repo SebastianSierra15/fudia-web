@@ -32,7 +32,7 @@ async function requestAdminLogs(
     return {
       success: false as const,
       code: "NO_SESSION" as const,
-      message: "Tu sesion expiro.",
+      message: "Tu sesión expiro.",
     };
   }
 
@@ -57,7 +57,7 @@ async function requestAdminLogs(
       return {
         success: false as const,
         code: "NO_SESSION" as const,
-        message: "Tu sesion expiro.",
+        message: "Tu sesión expiro.",
       };
     }
 

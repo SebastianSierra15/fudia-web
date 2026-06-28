@@ -38,7 +38,10 @@ export function AdminTeamInvitationTemplate() {
       if (!user) {
         router.replace(
           buildLoginHref(
-            buildCurrentPath("/admin/equipo/invitacion", searchParams.toString()),
+            buildCurrentPath(
+              "/admin/equipo/invitacion",
+              searchParams.toString(),
+            ),
           ),
         );
         return;
@@ -48,7 +51,7 @@ export function AdminTeamInvitationTemplate() {
       if (user.$id !== invitation.userId) {
         setStatus("error");
         setMessage(
-          "Esta invitacion pertenece a otra cuenta. Inicia sesion con el correo que recibio la invitacion.",
+          "Esta invitacion pertenece a otra cuenta. Inicia sesión con el correo que recibio la invitacion.",
         );
         return;
       }

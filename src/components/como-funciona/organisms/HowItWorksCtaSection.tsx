@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Play, Smartphone } from "lucide-react";
 import { Container } from "@/src/components/shared/atoms/Container";
+import { AppStoreLogo, GooglePlayLogo } from "@/src/components/shared/atoms/StoreLogos";
 import { StoreDownloadButton } from "@/src/components/shared/molecules/StoreDownloadButton";
 
 type HowItWorksCtaSectionProps = {
@@ -38,12 +38,12 @@ export function HowItWorksCtaSection({
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <StoreDownloadButton
-              icon={Smartphone}
+              icon={<AppStoreLogo className="size-5" />}
               label={appStoreLabel}
               className="border-[#1d2d58] bg-[#071633] text-white hover:bg-[#102450] [&_svg]:text-(--color-accent)"
             />
             <StoreDownloadButton
-              icon={Play}
+              icon={<GooglePlayLogo className="size-5" />}
               label={googlePlayLabel}
               className="border-black/15 bg-(--color-accent) text-(--color-accent-contrast) hover:bg-[#a9e96b]"
             />
@@ -53,4 +53,3 @@ export function HowItWorksCtaSection({
     </section>
   );
 }
-

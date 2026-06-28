@@ -1,0 +1,91 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  getCurrentUser,
+  syncAdminAccessSession,
+} from "@/src/lib/appwrite/auth";
+import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
+import { buildLoginHref } from "@/src/lib/auth/redirect";
+import { AdminSettingsDashboard } from "../organisms/AdminSettingsDashboard";
+import { AdminShell } from "./AdminShell";
+
+type AccessStatus = "checking" | "allowed";
+
+const SETTINGS_PATH = "/admin/settings";
+
+export function AdminSettingsTemplate() {
+  const router = useRouter();
+  const [status, setStatus] = useState<AccessStatus>("checking");
+  const [userLabel, setUserLabel] = useState("Administrador");
+
+  useEffect(() => {
+    let isActive = true;
+
+    const resolveAccess = async () => {
+      const user = await getCurrentUser();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!user) {
+        router.replace(buildLoginHref(SETTINGS_PATH));
+        return;
+      }
+
+      const syncResult = await syncAdminAccessSession();
+      if (!isActive) {
+        return;
+      }
+
+      if (!syncResult.success) {
+        router.replace(
+          `${ADMIN_AUTHORIZE_PATH}?next=${encodeURIComponent(SETTINGS_PATH)}`,
+        );
+        return;
+      }
+
+      const name = user.name?.trim();
+      const email = user.email?.trim();
+      setUserLabel(name || email || "Administrador");
+      setStatus("allowed");
+    };
+
+    void resolveAccess();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router]);
+
+  if (status === "checking") {
+    return (
+      <AdminShell
+        title="Configuracion"
+        subtitle="Parametros del sistema y la aplicacion"
+        userLabel={userLabel}
+      >
+        <div className="flex min-h-[360px] items-center justify-center">
+          <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-(--color-border) bg-(--color-surface) px-8 py-7 text-center">
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#a3e467] border-t-transparent" />
+            <p className="text-sm text-(--color-muted)">
+              Validando acceso a configuracion...
+            </p>
+          </div>
+        </div>
+      </AdminShell>
+    );
+  }
+
+  return (
+    <AdminShell
+      title="Configuracion"
+      subtitle="Parametros del sistema y la aplicacion"
+      userLabel={userLabel}
+    >
+      <AdminSettingsDashboard />
+    </AdminShell>
+  );
+}
