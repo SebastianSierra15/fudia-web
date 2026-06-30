@@ -8,10 +8,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Crown,
+  ListChecks,
   Mail,
   MessageCircle,
   RefreshCw,
   Search,
+  Users,
+  WalletCards,
   X,
 } from "lucide-react";
 import type {
@@ -542,7 +546,7 @@ export function AdminUsersDashboard({
           className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm font-semibold text-(--color-muted) hover:text-foreground"
         >
           <RefreshCw size={14} />
-          Actualizar
+          <span className="hidden sm:inline">Actualizar</span>
         </button>
         <button
           type="button"
@@ -570,16 +574,22 @@ export function AdminUsersDashboard({
                 label: "Total usuarios",
                 value: integerFormatter.format(data.summary.totalUsers),
                 hint: `metricas de ${data.metricsMonth}`,
+                icon: Users,
+                iconClassName: "bg-blue-500/15 text-blue-300",
               },
               {
                 label: "Premium",
                 value: integerFormatter.format(data.summary.premiumUsers),
                 hint: "usuarios con acceso Premium",
+                icon: Crown,
+                iconClassName: "bg-emerald-500/15 text-emerald-300",
               },
               {
                 label: "Costo IA / usuario",
                 value: moneyFormatter.format(data.summary.averageAiCostUsd),
                 hint: "promedio mensual estimado",
+                icon: WalletCards,
+                iconClassName: "bg-amber-500/15 text-amber-300",
               },
               {
                 label: "Sin onboarding",
@@ -588,13 +598,26 @@ export function AdminUsersDashboard({
                 ),
                 hint: "pendientes de completar",
                 tone: "text-orange-300",
+                icon: ListChecks,
+                iconClassName: "bg-orange-500/15 text-orange-300",
               },
-            ].map((metric) => (
+            ].map((metric) => {
+              const Icon = metric.icon;
+              return (
               <article
                 key={metric.label}
                 className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5 transition-transform hover:-translate-y-0.5"
               >
-                <p className="text-xs text-(--color-muted)">{metric.label}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-(--color-muted)">
+                    {metric.label}
+                  </p>
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${metric.iconClassName}`}
+                  >
+                    <Icon size={17} />
+                  </span>
+                </div>
                 <p className={`mt-2 text-2xl font-bold ${metric.tone ?? ""}`}>
                   {metric.value}
                 </p>
@@ -602,7 +625,8 @@ export function AdminUsersDashboard({
                   {metric.hint}
                 </p>
               </article>
-            ))}
+              );
+            })}
           </section>
           <section className="overflow-hidden rounded-lg border border-(--color-border) bg-(--color-surface)">
             <div className="grid gap-3 border-b border-(--color-border) p-4 md:grid-cols-2 xl:grid-cols-[1.45fr_0.7fr_0.75fr_0.8fr_0.9fr]">

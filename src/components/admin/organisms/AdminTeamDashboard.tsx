@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Mail, Plus, RefreshCw, ShieldCheck, UserPlus } from "lucide-react";
+import {
+  Clock,
+  Mail,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  UserCheck,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import type {
   AdminTeamMember,
   AdminTeamResponse,
@@ -171,7 +180,7 @@ export function AdminTeamDashboard() {
         className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm font-semibold text-(--color-muted) hover:text-foreground"
       >
         <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-        Actualizar
+        <span className="hidden sm:inline">Actualizar</span>
       </button>
     ),
     [loadTeam, refreshing],
@@ -183,21 +192,36 @@ export function AdminTeamDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
           <div className="rounded-lg border border-(--color-border) bg-(--color-surface) px-4 py-3">
-            <p className="text-2xl font-bold text-foreground">
-              {data?.summary.total ?? 0}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-2xl font-bold text-foreground">
+                {data?.summary.total ?? 0}
+              </p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300">
+                <Users size={16} />
+              </span>
+            </div>
             <p className="text-xs text-(--color-muted)">Miembros</p>
           </div>
           <div className="rounded-lg border border-(--color-border) bg-(--color-surface) px-4 py-3">
-            <p className="text-2xl font-bold text-(--color-accent)">
-              {data?.summary.active ?? 0}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-2xl font-bold text-(--color-accent)">
+                {data?.summary.active ?? 0}
+              </p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+                <UserCheck size={16} />
+              </span>
+            </div>
             <p className="text-xs text-(--color-muted)">Activos</p>
           </div>
           <div className="rounded-lg border border-(--color-border) bg-(--color-surface) px-4 py-3">
-            <p className="text-2xl font-bold text-amber-300">
-              {data?.summary.pending ?? 0}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-2xl font-bold text-amber-300">
+                {data?.summary.pending ?? 0}
+              </p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-300">
+                <Clock size={16} />
+              </span>
+            </div>
             <p className="text-xs text-(--color-muted)">Pendientes</p>
           </div>
         </div>

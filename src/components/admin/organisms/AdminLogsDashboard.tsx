@@ -23,6 +23,11 @@ import {
   getAdminLogs,
   getAdminLogsCsv,
 } from "@/src/lib/appwrite/admin-logs";
+import {
+  isAdminCacheFresh,
+  readAdminCache,
+  writeAdminCache,
+} from "@/src/lib/admin-cache/client";
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
@@ -32,6 +37,8 @@ import { useAdminHeaderActions } from "../templates/AdminShell";
 type LoadingState = "idle" | "loading" | "refreshing";
 type LevelFilter = "all" | AdminLogLevel;
 type SourceFilter = "all" | AdminLogSource;
+
+const LOGS_CACHE_STALE_MS = 60 * 1000;
 
 const integerFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
@@ -59,6 +66,10 @@ const levelLabel: Record<AdminLogLevel, string> = {
 
 function getCurrentUtcDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getLogsCacheKey(date: string) {
+  return `admin:logs:${date}`;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -208,6 +219,7 @@ export function AdminLogsDashboard({
   const [date, setDate] = useState(currentDate);
   const [data, setData] = useState<AdminLogsResponse | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -250,6 +262,48 @@ export function AdminLogsDashboard({
 
   useEffect(() => {
     let isActive = true;
+    const cacheKey = getLogsCacheKey(date);
+    const cached = readAdminCache<AdminLogsResponse>(cacheKey);
+
+    if (cached) {
+      const isFresh = isAdminCacheFresh(cacheKey, LOGS_CACHE_STALE_MS);
+      queueMicrotask(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setData(cached.data);
+        setErrorMessage("");
+        setIsFilterLoading(!isFresh);
+      });
+
+      if (isFresh) {
+        queueMicrotask(() => {
+          if (isActive) {
+            setLoadingState("idle");
+          }
+        });
+        return () => {
+          isActive = false;
+        };
+      }
+
+      queueMicrotask(() => {
+        if (isActive) {
+          setLoadingState("refreshing");
+        }
+      });
+    } else {
+      queueMicrotask(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setData(null);
+        setLoadingState("loading");
+        setIsFilterLoading(true);
+      });
+    }
 
     void getAdminLogs(date).then((result) => {
       if (!isActive) {
@@ -260,12 +314,15 @@ export function AdminLogsDashboard({
         if (!handleAuthorizationError(result.code)) {
           setErrorMessage(result.message);
           setLoadingState("idle");
+          setIsFilterLoading(false);
         }
         return;
       }
 
+      writeAdminCache(cacheKey, result.data);
       setData(result.data);
       setLoadingState("idle");
+      setIsFilterLoading(false);
     });
 
     return () => {
@@ -306,7 +363,12 @@ export function AdminLogsDashboard({
     }
 
     setErrorMessage("");
-    setLoadingState("loading");
+    setIsFilterLoading(true);
+    setLoadingState(
+      readAdminCache<AdminLogsResponse>(getLogsCacheKey(nextDate))
+        ? "refreshing"
+        : "loading",
+    );
     setDate(nextDate);
   };
 
@@ -323,6 +385,7 @@ export function AdminLogsDashboard({
       return;
     }
 
+    writeAdminCache(getLogsCacheKey(date), result.data);
     setData(result.data);
     setLoadingState("idle");
   }, [date, handleAuthorizationError]);
@@ -442,6 +505,7 @@ export function AdminLogsDashboard({
                 hint: `${integerFormatter.format(data.summary.warnings)} advertencias`,
                 icon: AlertTriangle,
                 tone: data.summary.errors > 0 ? "text-red-400" : "text-foreground",
+                iconClassName: "bg-red-500/15 text-red-300",
               },
               {
                 label: "Costo IA hoy",
@@ -449,6 +513,7 @@ export function AdminLogsDashboard({
                 hint: "acumulado del dia",
                 icon: WalletCards,
                 tone: "text-(--color-accent)",
+                iconClassName: "bg-emerald-500/15 text-emerald-300",
               },
               {
                 label: "Funciones ejecutadas",
@@ -456,6 +521,7 @@ export function AdminLogsDashboard({
                 hint: "ejecuciones hoy",
                 icon: ServerCog,
                 tone: "text-foreground",
+                iconClassName: "bg-blue-500/15 text-blue-300",
               },
               {
                 label: "Total logs hoy",
@@ -463,6 +529,7 @@ export function AdminLogsDashboard({
                 hint: "todos los niveles",
                 icon: ClipboardList,
                 tone: "text-foreground",
+                iconClassName: "bg-amber-500/15 text-amber-300",
               },
             ].map((metric) => {
               const Icon = metric.icon;
@@ -475,8 +542,10 @@ export function AdminLogsDashboard({
                     <p className="text-xs text-(--color-muted)">
                       {metric.label}
                     </p>
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-(--color-surface-2)">
-                      <Icon size={18} className="text-(--color-muted)" />
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${metric.iconClassName}`}
+                    >
+                      <Icon size={18} />
                     </span>
                   </div>
                   <p className={`mt-4 text-3xl font-bold ${metric.tone}`}>
@@ -513,6 +582,12 @@ export function AdminLogsDashboard({
                 onChange={(event) => handleDateChange(event.target.value)}
                 className="h-9 cursor-pointer rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm text-foreground"
               />
+              {isFilterLoading ? (
+                <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-xs font-semibold text-(--color-accent)">
+                  <RefreshCw size={13} className="animate-spin" />
+                  Cargando dia...
+                </span>
+              ) : null}
 
               <select
                 value={levelFilter}

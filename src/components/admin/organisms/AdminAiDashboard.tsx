@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BrainCircuit,
@@ -18,12 +18,35 @@ import {
   getAdminAiUsage,
   getAdminAiUsageCsv,
 } from "@/src/lib/appwrite/admin-ai";
+import {
+  isAdminCacheFresh,
+  readAdminCache,
+  writeAdminCache,
+} from "@/src/lib/admin-cache/client";
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
 import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
+import { useAdminFeedback } from "../molecules/AdminFeedbackProvider";
 import { useAdminHeaderActions } from "../templates/AdminShell";
 
 type LoadingState = "idle" | "loading" | "refreshing";
+type AiPanelFilter = {
+  scope: "date" | "model" | "function" | "user";
+  value: string;
+  label: string;
+} | null;
+
+const AI_CACHE_STALE_MS = 5 * 60 * 1000;
+const CHART_BAR_COLORS = [
+  "bg-emerald-500",
+  "bg-blue-500",
+  "bg-amber-500",
+  "bg-violet-500",
+  "bg-cyan-500",
+  "bg-lime-500",
+  "bg-orange-500",
+  "bg-sky-500",
+];
 
 const integerFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
@@ -46,6 +69,10 @@ function getCurrentUtcMonth() {
     2,
     "0",
   )}`;
+}
+
+function getAiCacheKey(month: string) {
+  return `admin:ia:${month}`;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -98,23 +125,14 @@ function getBudgetState(usedPercent: number | null) {
   };
 }
 
-function getSourceDescription(status: AiUsageResponse["sources"][keyof AiUsageResponse["sources"]]["status"]) {
-  if (status === "ok") {
-    return "Datos disponibles";
-  }
-
-  if (status === "partial") {
-    return "Informacion parcial";
-  }
-
-  return "Pendiente de conexion";
-}
-
 type CostBarListProps<T extends AiAttributionBreakdown> = {
   items: T[];
   getKey: (item: T) => string;
   getLabel: (item: T) => string;
   emptyLabel: string;
+  animated: boolean;
+  selectedKey: string | null;
+  onSelect: (key: string, label: string) => void;
 };
 
 function CostBarList<T extends AiAttributionBreakdown>({
@@ -122,7 +140,11 @@ function CostBarList<T extends AiAttributionBreakdown>({
   getKey,
   getLabel,
   emptyLabel,
+  animated,
+  selectedKey,
+  onSelect,
 }: CostBarListProps<T>) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const maxCost = Math.max(
     0.000001,
     ...items.map((item) => item.estimatedCostUsd),
@@ -138,15 +160,26 @@ function CostBarList<T extends AiAttributionBreakdown>({
 
   return (
     <div className="space-y-4">
-      {items.map((item) => (
-        <div key={getKey(item)}>
+      {items.map((item, index) => {
+        const itemKey = getKey(item);
+        const width = Math.max(2, (item.estimatedCostUsd / maxCost) * 100);
+        const isSelected = selectedKey === itemKey;
+        const isDimmed = selectedKey !== null && !isSelected;
+        const barColor = CHART_BAR_COLORS[index % CHART_BAR_COLORS.length];
+        return (
+          <div
+            key={itemKey}
+            className={`group relative transition-opacity ${
+              isDimmed ? "opacity-35" : "opacity-100"
+            }`}
+          >
           <div className="mb-2 flex items-start justify-between gap-4 text-sm">
             <div className="min-w-0">
               <p className="truncate font-mono text-xs font-semibold">
                 {getLabel(item)}
               </p>
               <p className="mt-1 text-xs text-(--color-muted)">
-                {integerFormatter.format(item.calls)} llamadas ·{" "}
+                {integerFormatter.format(item.calls)} llamadas -{" "}
                 {integerFormatter.format(item.tokens)} tokens
               </p>
             </div>
@@ -154,31 +187,83 @@ function CostBarList<T extends AiAttributionBreakdown>({
               {usdFormatter.format(item.estimatedCostUsd)}
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-(--color-surface-2)">
-            <div
-              className="h-full rounded-full bg-(--color-accent-strong)"
-              style={{
-                width: `${Math.max(
-                  2,
-                  (item.estimatedCostUsd / maxCost) * 100,
-                )}%`,
+          <button
+            type="button"
+            onClick={() =>
+              onSelect(itemKey, getLabel(item))
+            }
+            onFocus={() => setActiveKey(itemKey)}
+            onBlur={() => setActiveKey(null)}
+            className="relative block h-2 w-full cursor-pointer overflow-visible rounded-full bg-(--color-surface-2) text-left"
+            aria-label={`${getLabel(item)}: ${usdFormatter.format(
+              item.estimatedCostUsd,
+            )}`}
+          >
+            <span
+              className={`pointer-events-none absolute right-0 bottom-[calc(100%+8px)] z-20 rounded-md border border-(--color-border) bg-[#101a2d] px-2 py-1 text-[11px] font-semibold text-white shadow-lg transition-opacity ${
+                activeKey === itemKey
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100"
+              }`}
+            >
+              {usdFormatter.format(item.estimatedCostUsd)} estimados
+            </span>
+              <div
+                className={`h-full rounded-full transition-[width] duration-700 ease-out ${barColor}`}
+                style={{
+                  width: animated ? `${width}%` : "0%",
+                transitionDelay: `${index * 70}ms`,
               }}
             />
+          </button>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 export function AdminAiDashboard() {
   const router = useRouter();
+  const { hideLoading, showLoading } = useAdminFeedback();
+  const filterLoadingRef = useRef(false);
   const [currentMonth] = useState(getCurrentUtcMonth);
   const [month, setMonth] = useState(currentMonth);
   const [data, setData] = useState<AiUsageResponse | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [chartsAnimated, setChartsAnimated] = useState(false);
+  const [activeDailyDate, setActiveDailyDate] = useState<string | null>(null);
+  const [panelFilter, setPanelFilter] = useState<AiPanelFilter>(null);
+
+  const togglePanelFilter = useCallback(
+    (scope: NonNullable<AiPanelFilter>["scope"], value: string, label: string) => {
+      setPanelFilter((current) =>
+        current?.scope === scope && current.value === value
+          ? null
+          : { scope, value, label },
+      );
+    },
+    [],
+  );
+
+  const finishFilterLoading = useCallback(() => {
+    if (!filterLoadingRef.current) {
+      return;
+    }
+
+    filterLoadingRef.current = false;
+    hideLoading();
+  }, [hideLoading]);
+
+  useEffect(
+    () => () => {
+      filterLoadingRef.current = false;
+      hideLoading();
+    },
+    [hideLoading],
+  );
 
   const handleAuthorizationError = useCallback(
     (code: "NO_SESSION" | "FORBIDDEN" | "REQUEST_ERROR") => {
@@ -201,6 +286,48 @@ export function AdminAiDashboard() {
 
   useEffect(() => {
     let isActive = true;
+    const cacheKey = getAiCacheKey(month);
+    const cached = readAdminCache<AiUsageResponse>(cacheKey);
+
+    if (cached) {
+      const isFresh = isAdminCacheFresh(cacheKey, AI_CACHE_STALE_MS);
+      queueMicrotask(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setData(cached.data);
+        setErrorMessage("");
+        setChartsAnimated(false);
+        window.requestAnimationFrame(() => setChartsAnimated(true));
+      });
+
+      if (isFresh) {
+        queueMicrotask(() => {
+          if (isActive) {
+            setLoadingState("idle");
+            finishFilterLoading();
+          }
+        });
+        return () => {
+          isActive = false;
+        };
+      }
+
+      queueMicrotask(() => {
+        if (isActive) {
+          setLoadingState("refreshing");
+        }
+      });
+    } else {
+      queueMicrotask(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setLoadingState("loading");
+      });
+    }
 
     void getAdminAiUsage(month).then((result) => {
       if (!isActive) {
@@ -208,21 +335,28 @@ export function AdminAiDashboard() {
       }
 
       if (!result.success) {
-        if (!handleAuthorizationError(result.code)) {
+        if (handleAuthorizationError(result.code)) {
+          finishFilterLoading();
+        } else {
           setErrorMessage(result.message);
           setLoadingState("idle");
+          finishFilterLoading();
         }
         return;
       }
 
+      writeAdminCache(cacheKey, result.data);
+      setChartsAnimated(false);
       setData(result.data);
+      window.requestAnimationFrame(() => setChartsAnimated(true));
       setLoadingState("idle");
+      finishFilterLoading();
     });
 
     return () => {
       isActive = false;
     };
-  }, [handleAuthorizationError, month]);
+  }, [finishFilterLoading, handleAuthorizationError, month]);
 
   const handleMonthChange = (nextMonth: string) => {
     if (!nextMonth || nextMonth > currentMonth || nextMonth === month) {
@@ -230,7 +364,13 @@ export function AdminAiDashboard() {
     }
 
     setErrorMessage("");
-    setLoadingState("loading");
+    filterLoadingRef.current = true;
+    showLoading("Cargando datos de IA...");
+    setLoadingState(
+      readAdminCache<AiUsageResponse>(getAiCacheKey(nextMonth))
+        ? "refreshing"
+        : "loading",
+    );
     setMonth(nextMonth);
   };
 
@@ -247,7 +387,10 @@ export function AdminAiDashboard() {
       return;
     }
 
+    writeAdminCache(getAiCacheKey(month), result.data);
+    setChartsAnimated(false);
     setData(result.data);
+    window.requestAnimationFrame(() => setChartsAnimated(true));
     setLoadingState("idle");
   }, [handleAuthorizationError, month]);
 
@@ -286,7 +429,7 @@ export function AdminAiDashboard() {
             size={15}
             className={loadingState === "refreshing" ? "animate-spin" : ""}
           />
-          Actualizar
+          <span className="hidden sm:inline">Actualizar</span>
         </button>
         <button
           type="button"
@@ -316,6 +459,61 @@ export function AdminAiDashboard() {
       ),
     [data],
   );
+  const displayedDaily = useMemo(() => {
+    if (!data || panelFilter?.scope !== "date") {
+      return data?.daily ?? [];
+    }
+
+    return data.daily.filter((day) => day.date === panelFilter.value);
+  }, [data, panelFilter]);
+  const displayedModels = useMemo(() => {
+    if (!data || panelFilter?.scope !== "model") {
+      return data?.byModel ?? [];
+    }
+
+    return data.byModel.filter((item) => item.model === panelFilter.value);
+  }, [data, panelFilter]);
+  const displayedFunctions = useMemo(() => {
+    if (!data || panelFilter?.scope !== "function") {
+      return data?.byFunction ?? [];
+    }
+
+    return data.byFunction.filter(
+      (item) => item.functionName === panelFilter.value,
+    );
+  }, [data, panelFilter]);
+  const displayedTopUsers = useMemo(() => {
+    if (!data || panelFilter?.scope !== "user") {
+      return data?.topUsers ?? [];
+    }
+
+    return data.topUsers.filter((user) => user.userId === panelFilter.value);
+  }, [data, panelFilter]);
+  const displayedSummary = useMemo(() => {
+    if (!data || panelFilter?.scope !== "date") {
+      return data?.summary ?? null;
+    }
+
+    const day = data.daily.find((item) => item.date === panelFilter.value);
+    if (!day) {
+      return data.summary;
+    }
+
+    return {
+      ...data.summary,
+      officialCalls: day.officialCalls,
+      officialCompletionCalls: day.officialCompletionCalls,
+      officialTranscriptionCalls: day.officialTranscriptionCalls,
+      officialInputTokens: day.officialInputTokens,
+      officialCachedInputTokens: day.officialCachedInputTokens,
+      officialOutputTokens: day.officialOutputTokens,
+      officialTotalTokens: day.officialTokens,
+      officialCostUsd: day.officialCostUsd,
+      attributedCalls: day.attributedCalls,
+      attributedTokens: day.attributedTokens,
+      estimatedAttributedCostUsd: day.estimatedCostUsd,
+    };
+  }, [data, panelFilter]);
   const budgetWidth = Math.min(
     100,
     Math.max(0, data?.budget.usedPercent ?? 0),
@@ -349,6 +547,21 @@ export function AdminAiDashboard() {
           />
         </label>
 
+        {panelFilter ? (
+          <div className="flex min-h-11 w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-(--color-border) bg-(--color-surface) px-4 py-2 text-sm md:w-auto md:min-w-[360px]">
+            <span className="text-(--color-muted)">
+              Filtro activo:{" "}
+              <strong className="text-foreground">{panelFilter.label}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setPanelFilter(null)}
+              className="cursor-pointer font-semibold text-(--color-accent) hover:text-(--color-accent-strong)"
+            >
+              Limpiar filtro
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {errorMessage ? (
@@ -369,101 +582,67 @@ export function AdminAiDashboard() {
 
       {data ? (
         <>
-          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                label: "OpenAI Completions",
-                state: data.sources.openaiCompletions,
-                icon: BrainCircuit,
-              },
-              {
-                label: "OpenAI Whisper",
-                state: data.sources.openaiTranscriptions,
-                icon: BrainCircuit,
-              },
-              {
-                label: "OpenAI Costs",
-                state: data.sources.openaiCosts,
-                icon: WalletCards,
-              },
-              {
-                label: "Appwrite Usage",
-                state: data.sources.appwriteTelemetry,
-                icon: Database,
-              },
-            ].map((source) => {
-              const Icon = source.icon;
-              return (
-                <article
-                  key={source.label}
-                  className="flex min-h-24 items-center justify-between gap-3 rounded-lg border border-(--color-border) bg-(--color-surface) p-4"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Icon size={18} className="shrink-0 text-(--color-muted)" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {source.label}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-(--color-muted)">
-                        {getSourceDescription(source.state.status)}
-                      </p>
-                    </div>
-                  </div>
-                  <AdminSourceBadge status={source.state.status} />
-                </article>
-              );
-            })}
-          </section>
-
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[
               {
                 label: "Costo oficial",
-                value: usdFormatter.format(data.summary.officialCostUsd),
+                value: usdFormatter.format(
+                  displayedSummary?.officialCostUsd ?? 0,
+                ),
                 hint: "OpenAI Costs",
                 icon: WalletCards,
+                iconClassName: "bg-emerald-500/15 text-emerald-300",
+                valueClassName: "text-emerald-200",
               },
               {
                 label: "Llamadas oficiales",
-                value: integerFormatter.format(data.summary.officialCalls),
+                value: integerFormatter.format(
+                  displayedSummary?.officialCalls ?? 0,
+                ),
                 hint: `${integerFormatter.format(
-                  data.summary.officialCompletionCalls,
-                )} completions · ${integerFormatter.format(
-                  data.summary.officialTranscriptionCalls,
+                  displayedSummary?.officialCompletionCalls ?? 0,
+                )} completions - ${integerFormatter.format(
+                  displayedSummary?.officialTranscriptionCalls ?? 0,
                 )} Whisper`,
                 icon: BrainCircuit,
+                iconClassName: "bg-blue-500/15 text-blue-300",
               },
               {
                 label: "Tokens de entrada",
                 value: integerFormatter.format(
-                  data.summary.officialInputTokens,
+                  displayedSummary?.officialInputTokens ?? 0,
                 ),
                 hint: "Uso oficial de OpenAI",
                 icon: Database,
+                iconClassName: "bg-cyan-500/15 text-cyan-300",
               },
               {
                 label: "Tokens en cache",
                 value: integerFormatter.format(
-                  data.summary.officialCachedInputTokens,
+                  displayedSummary?.officialCachedInputTokens ?? 0,
                 ),
                 hint: "Incluidos en tokens de entrada",
                 icon: Database,
+                iconClassName: "bg-violet-500/15 text-violet-300",
               },
               {
                 label: "Tokens de salida",
                 value: integerFormatter.format(
-                  data.summary.officialOutputTokens,
+                  displayedSummary?.officialOutputTokens ?? 0,
                 ),
                 hint: "Uso oficial de OpenAI",
                 icon: Database,
+                iconClassName: "bg-amber-500/15 text-amber-300",
               },
               {
                 label: "Costo atribuido",
                 value: usdFormatter.format(
-                  data.summary.estimatedAttributedCostUsd,
+                  displayedSummary?.estimatedAttributedCostUsd ?? 0,
                 ),
                 hint: "Estimado desde telemetria",
                 icon: Users,
+                iconClassName: "bg-lime-500/15 text-lime-300",
+                valueClassName: "text-lime-200",
               },
             ].map((metric) => {
               const Icon = metric.icon;
@@ -476,9 +655,17 @@ export function AdminAiDashboard() {
                     <p className="text-xs font-semibold uppercase text-(--color-muted)">
                       {metric.label}
                     </p>
-                    <Icon size={18} className="text-(--color-muted)" />
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${metric.iconClassName}`}
+                    >
+                      <Icon size={18} />
+                    </span>
                   </div>
-                  <p className="mt-3 text-2xl font-semibold">{metric.value}</p>
+                  <p
+                    className={`mt-3 text-2xl font-semibold ${metric.valueClassName ?? ""}`}
+                  >
+                    {metric.value}
+                  </p>
                   <p className="mt-1 text-xs text-(--color-muted)">
                     {metric.hint}
                   </p>
@@ -487,96 +674,231 @@ export function AdminAiDashboard() {
             })}
           </section>
 
-          <section className="grid gap-6 border-y border-(--color-border) py-7 lg:grid-cols-[1fr_1.5fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase text-(--color-muted)">
-                Cobertura de atribucion
-              </p>
-              <h2 className="mt-2 text-xl font-semibold">
-                Oficial vs estimado
-              </h2>
-              <dl className="mt-4 grid grid-cols-3 gap-3">
+          <section className="grid gap-4 border-y border-(--color-border) py-7 xl:grid-cols-[1.05fr_1.25fr]">
+            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <dt className="text-xs text-(--color-muted)">Llamadas</dt>
-                  <dd className="mt-1 font-semibold">
-                    {formatPercent(data.attributionCoverage.callsPercent)}
-                  </dd>
+                  <p className="text-xs font-semibold uppercase text-(--color-muted)">
+                    Cobertura de atribucion
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Oficial vs estimado
+                  </h2>
                 </div>
-                <div>
-                  <dt className="text-xs text-(--color-muted)">Tokens</dt>
-                  <dd className="mt-1 font-semibold">
-                    {formatPercent(data.attributionCoverage.tokensPercent)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-(--color-muted)">Costo</dt>
-                  <dd className="mt-1 font-semibold">
-                    {formatPercent(data.attributionCoverage.costPercent)}
-                  </dd>
-                </div>
-              </dl>
-              <p className="mt-4 text-xs text-(--color-muted)">
-                Telemetria desde:{" "}
-                {data.telemetryStartedAt
-                  ? new Date(data.telemetryStartedAt).toLocaleDateString(
-                      "es-CO",
-                    )
-                  : "sin fecha disponible"}
-              </p>
-            </div>
+                <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-200">
+                  Telemetria interna
+                </span>
+              </div>
 
-            <div>
-              <div className="flex items-center justify-between gap-4 text-sm">
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                {[
+                  {
+                    label: "Llamadas",
+                    percent: data.attributionCoverage.callsPercent,
+                    value: integerFormatter.format(
+                      data.attributionCoverage.attributedCalls,
+                    ),
+                    total: integerFormatter.format(
+                      data.attributionCoverage.officialCalls,
+                    ),
+                    color: "#60a5fa",
+                    textClassName: "text-blue-200",
+                  },
+                  {
+                    label: "Tokens",
+                    percent: data.attributionCoverage.tokensPercent,
+                    value: integerFormatter.format(
+                      data.attributionCoverage.attributedTokens,
+                    ),
+                    total: integerFormatter.format(
+                      data.attributionCoverage.officialTokens,
+                    ),
+                    color: "#22d3ee",
+                    textClassName: "text-cyan-200",
+                  },
+                  {
+                    label: "Costo",
+                    percent: data.attributionCoverage.costPercent,
+                    value: usdFormatter.format(
+                      data.attributionCoverage.estimatedCostUsd,
+                    ),
+                    total: usdFormatter.format(
+                      data.attributionCoverage.officialCostUsd,
+                    ),
+                    color: "#a3e635",
+                    textClassName: "text-lime-200",
+                  },
+                ].map((item) => {
+                  const percent = Math.min(
+                    100,
+                    Math.max(0, item.percent ?? 0),
+                  );
+                  const radius = 34;
+                  const circumference = 2 * Math.PI * radius;
+                  const progressOffset =
+                    circumference -
+                    ((chartsAnimated ? percent : 0) / 100) * circumference;
+                  return (
+                    <div
+                      key={item.label}
+                      className="min-w-0 rounded-lg bg-(--color-surface-2) p-4"
+                    >
+                      <div className="flex min-w-0 flex-col items-center text-center">
+                        <div className="relative h-24 w-24 shrink-0">
+                          <svg
+                            viewBox="0 0 88 88"
+                            className="-rotate-90"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="44"
+                              cy="44"
+                              r={radius}
+                              fill="none"
+                              stroke="rgba(64, 82, 113, 0.42)"
+                              strokeWidth="10"
+                            />
+                            <circle
+                              cx="44"
+                              cy="44"
+                              r={radius}
+                              fill="none"
+                              stroke={item.color}
+                              strokeWidth="10"
+                              strokeLinecap="round"
+                              strokeDasharray={circumference}
+                              strokeDashoffset={progressOffset}
+                              className="transition-[stroke-dashoffset] duration-700 ease-out"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 grid place-items-center">
+                            <span
+                              className={`text-sm font-bold ${item.textClassName}`}
+                            >
+                              {formatPercent(item.percent)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-3 min-w-0">
+                          <p className="truncate text-xs font-semibold uppercase text-(--color-muted)">
+                            {item.label}
+                          </p>
+                          <p className="mt-1 truncate text-sm font-semibold">
+                            {item.value}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-(--color-muted)">
+                            de {item.total}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+            </article>
+
+            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase text-(--color-muted)">
                     Presupuesto mensual
                   </p>
-                  <p className="mt-2 font-semibold">
-                    {usdFormatter.format(data.budget.spentUsd)} gastados
-                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Control de gasto IA
+                  </h2>
                 </div>
-                <span className="text-(--color-muted)">
-                  {data.budget.limitUsd === null
-                    ? "Sin configurar"
-                    : `${formatPercent(data.budget.usedPercent)} de ${usdFormatter.format(
-                        data.budget.limitUsd,
-                      )}`}
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    data.budget.usedPercent !== null &&
+                    data.budget.usedPercent >= 90
+                      ? "bg-orange-500/15 text-orange-200"
+                      : "bg-emerald-500/15 text-emerald-200"
+                  }`}
+                >
+                  {budgetState.label}
                 </span>
               </div>
+
               {data.budget.limitUsd === null ? (
-                <p className="mt-4 rounded-lg border border-dashed border-(--color-border) p-4 text-sm text-(--color-muted)">
+                <p className="mt-5 rounded-lg border border-dashed border-(--color-border) p-4 text-sm text-(--color-muted)">
                   Define un presupuesto mensual para activar el seguimiento.
                 </p>
               ) : (
                 <>
-                  <div className="mt-4 h-3 overflow-hidden rounded-full bg-(--color-surface-2)">
-                    <div
-                      className={`h-full rounded-full ${budgetState.barClassName}`}
-                      style={{ width: `${budgetWidth}%` }}
-                    />
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg bg-(--color-surface-2) p-4">
+                      <p className="text-xs text-(--color-muted)">Gastado</p>
+                      <p className="mt-2 text-2xl font-bold text-emerald-200">
+                        {usdFormatter.format(data.budget.spentUsd)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-(--color-surface-2) p-4">
+                      <p className="text-xs text-(--color-muted)">Disponible</p>
+                      <p className="mt-2 text-2xl font-bold text-blue-200">
+                        {usdFormatter.format(data.budget.remainingUsd ?? 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-(--color-surface-2) p-4">
+                      <p className="text-xs text-(--color-muted)">Limite</p>
+                      <p className="mt-2 text-2xl font-bold">
+                        {usdFormatter.format(data.budget.limitUsd)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs">
-                    <span
-                      className={
-                        data.budget.usedPercent !== null &&
-                        data.budget.usedPercent >= 90
-                          ? "font-semibold text-orange-300"
-                          : "text-(--color-muted)"
-                      }
-                    >
-                      {budgetState.label}
-                    </span>
-                    <span className="text-(--color-muted)">
-                      {usdFormatter.format(data.budget.remainingUsd ?? 0)}{" "}
-                      disponibles
-                    </span>
+
+                  <div className="mt-5">
+                    <div className="mb-2 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-(--color-muted)">
+                        Consumo
+                      </span>
+                      <span className="font-semibold">
+                        {formatPercent(data.budget.usedPercent)}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="h-4 overflow-hidden rounded-full bg-(--color-surface-2)">
+                        <div
+                          className="h-full rounded-full bg-[linear-gradient(90deg,#10b981_0%,#84cc16_45%,#f59e0b_70%,#f97316_90%,#ef4444_100%)] transition-[width] duration-700 ease-out"
+                          style={{
+                            width: chartsAnimated ? `${budgetWidth}%` : "0%",
+                          }}
+                        />
+                      </div>
+                      {[
+                        { label: "70%", left: "70%", className: "text-amber-300" },
+                        { label: "90%", left: "90%", className: "text-orange-300" },
+                        { label: "100%", left: "100%", className: "text-red-300" },
+                      ].map((mark) => (
+                        <span
+                          key={mark.label}
+                          className="pointer-events-none absolute top-[-4px] h-6 w-px bg-white/45"
+                          style={{ left: mark.left }}
+                        />
+                      ))}
+                    </div>
+                    <div className="relative mt-2 h-5 text-[10px] font-semibold text-(--color-muted)">
+                      {[
+                        { label: "70%", left: "70%", className: "text-amber-300" },
+                        { label: "90%", left: "90%", className: "text-orange-300" },
+                        { label: "100%", left: "100%", className: "text-red-300" },
+                      ].map((mark) => (
+                        <span
+                          key={mark.label}
+                          className={`absolute -translate-x-1/2 ${mark.className}`}
+                          style={{ left: mark.left }}
+                        >
+                          {mark.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
-            </div>
+            </article>
           </section>
 
-          <section>
+          <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
             <p className="text-xs font-semibold uppercase text-(--color-muted)">
               Gasto oficial diario
             </p>
@@ -586,76 +908,126 @@ export function AdminAiDashboard() {
                 Sin datos diarios para este mes.
               </p>
             ) : (
-              <div className="mt-5 overflow-x-auto">
+              <div className="mt-5 overflow-x-auto pb-2">
                 <div
-                  className="grid min-w-[720px] items-end gap-2"
+                  className="grid min-w-[720px] items-end gap-2 pt-8"
                   style={{
                     gridTemplateColumns: `repeat(${data.daily.length}, minmax(28px, 1fr))`,
                   }}
                 >
-                  {data.daily.map((day) => (
-                    <div
-                      key={day.date}
-                      className="flex flex-col items-center gap-2"
-                      title={`${day.date}: ${usdFormatter.format(
-                        day.officialCostUsd,
-                      )} oficial`}
-                    >
-                      <span className="text-[10px] text-(--color-muted)">
-                        {usdFormatter.format(day.officialCostUsd)}
-                      </span>
-                      <div className="flex h-36 w-full items-end justify-center rounded-sm bg-(--color-surface-2)">
-                        <div
-                          className="w-full max-w-8 rounded-t-sm bg-emerald-500"
-                          style={{
-                            height: `${Math.max(
-                              2,
-                              (day.officialCostUsd / maxDailyCost) * 144,
-                            )}px`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-(--color-muted)">
-                        {shortDateFormatter.format(
-                          new Date(`${day.date}T00:00:00Z`),
-                        )}
-                      </span>
-                    </div>
-                  ))}
+                  {data.daily.map((day) => {
+                    const isSelected =
+                      panelFilter?.scope === "date" &&
+                      panelFilter.value === day.date;
+                    const isDimmed =
+                      panelFilter?.scope === "date" && !isSelected;
+                    return (
+                      <button
+                        type="button"
+                        key={day.date}
+                        onClick={() => {
+                          setActiveDailyDate(day.date);
+                          togglePanelFilter(
+                            "date",
+                            day.date,
+                            `Fecha ${day.date}`,
+                          );
+                        }}
+                        onFocus={() => setActiveDailyDate(day.date)}
+                        onBlur={() => setActiveDailyDate(null)}
+                        className={`group relative flex cursor-pointer flex-col items-center gap-2 text-left transition-opacity ${
+                          isDimmed ? "opacity-35" : "opacity-100"
+                        }`}
+                        aria-label={`${day.date}: ${usdFormatter.format(
+                          day.officialCostUsd,
+                        )} oficial`}
+                      >
+                        <span
+                          className={`pointer-events-none absolute top-0 left-1/2 z-20 w-max max-w-44 -translate-x-1/2 rounded-md border border-(--color-border) bg-[#101a2d] px-2 py-1 text-center text-[11px] font-semibold text-white shadow-lg transition-opacity ${
+                            activeDailyDate === day.date
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }`}
+                        >
+                          {shortDateFormatter.format(
+                            new Date(`${day.date}T00:00:00Z`),
+                          )}
+                          : {usdFormatter.format(day.officialCostUsd)}
+                        </span>
+                        <div className="flex h-36 w-full items-end justify-center rounded-sm bg-(--color-surface-2)">
+                          <div
+                            className={`w-full max-w-8 rounded-t-sm bg-emerald-500 transition-[height] duration-700 ease-out ${
+                              isSelected ? "ring-2 ring-white/60" : ""
+                            }`}
+                            style={{
+                              height: chartsAnimated
+                                ? `${Math.max(
+                                    2,
+                                    (day.officialCostUsd / maxDailyCost) *
+                                      144,
+                                  )}px`
+                                : "0px",
+                            }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-(--color-muted)">
+                          {shortDateFormatter.format(
+                            new Date(`${day.date}T00:00:00Z`),
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
-          </section>
+          </article>
 
-          <section className="grid gap-8 border-t border-(--color-border) pt-8 xl:grid-cols-2">
-            <div>
+          <section className="grid gap-4 xl:grid-cols-2">
+            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
               <p className="text-xs font-semibold uppercase text-(--color-muted)">
                 Atribucion estimada
               </p>
               <h2 className="mt-2 text-xl font-semibold">Gasto por modelo</h2>
               <div className="mt-5">
                 <CostBarList
-                  items={data.byModel}
+                  items={displayedModels}
                   getKey={(item) => item.model}
                   getLabel={(item) => item.model}
                   emptyLabel="Sin atribucion por modelo."
+                  animated={chartsAnimated}
+                  selectedKey={
+                    panelFilter?.scope === "model" ? panelFilter.value : null
+                  }
+                  onSelect={(key, label) =>
+                    togglePanelFilter("model", key, `Modelo ${label}`)
+                  }
                 />
               </div>
-            </div>
-            <div>
+            </article>
+            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
               <p className="text-xs font-semibold uppercase text-(--color-muted)">
                 Atribucion estimada
               </p>
               <h2 className="mt-2 text-xl font-semibold">Gasto por funcion</h2>
               <div className="mt-5">
                 <CostBarList
-                  items={data.byFunction}
+                  items={displayedFunctions}
                   getKey={(item) => item.functionName}
                   getLabel={(item) => item.functionName}
                   emptyLabel="Sin atribucion por funcion."
+                  animated={chartsAnimated}
+                  selectedKey={
+                    panelFilter?.scope === "function"
+                      ? panelFilter.value
+                      : null
+                  }
+                  onSelect={(key, label) =>
+                    togglePanelFilter("function", key, `Funcion ${label}`)
+                  }
                 />
               </div>
-            </div>
+            </article>
           </section>
 
           <section className="border-t border-(--color-border) pt-8">
@@ -670,9 +1042,9 @@ export function AdminAiDashboard() {
               </div>
               <AdminSourceBadge status={data.sources.appwriteUsers.status} />
             </div>
-            <div className="mt-4 overflow-x-auto rounded-lg border border-(--color-border)">
+            <div className="mt-4 max-h-[420px] overflow-auto rounded-lg border border-(--color-border)">
               <table className="w-full min-w-[760px] text-left">
-                <thead className="bg-(--color-surface-2)">
+                <thead className="sticky top-0 z-10 bg-(--color-surface-2)">
                   <tr>
                     {[
                       "Usuario",
@@ -691,7 +1063,7 @@ export function AdminAiDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.topUsers.length === 0 ? (
+                  {displayedTopUsers.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
@@ -701,10 +1073,13 @@ export function AdminAiDashboard() {
                       </td>
                     </tr>
                   ) : (
-                    data.topUsers.map((user) => (
+                    displayedTopUsers.map((user) => (
                       <tr
                         key={user.userId}
-                        className="border-t border-(--color-border)"
+                        onClick={() =>
+                          togglePanelFilter("user", user.userId, user.email)
+                        }
+                        className="cursor-pointer border-t border-(--color-border) transition-colors hover:bg-(--color-surface-2)"
                       >
                         <td className="px-4 py-3">
                           <p className="text-sm font-semibold">{user.name}</p>
@@ -715,13 +1090,13 @@ export function AdminAiDashboard() {
                         <td className="px-4 py-3 font-mono text-xs">
                           {user.userId}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-blue-200">
                           {integerFormatter.format(user.calls)}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-cyan-200">
                           {integerFormatter.format(user.tokens)}
                         </td>
-                        <td className="px-4 py-3 text-sm font-semibold">
+                        <td className="px-4 py-3 text-sm font-semibold text-emerald-300">
                           {usdFormatter.format(user.estimatedCostUsd)}
                         </td>
                       </tr>
@@ -739,9 +1114,9 @@ export function AdminAiDashboard() {
             <h2 className="mt-2 text-xl font-semibold">
               Oficial y atribuido
             </h2>
-            <div className="mt-4 overflow-x-auto rounded-lg border border-(--color-border)">
+            <div className="mt-4 max-h-[520px] overflow-auto rounded-lg border border-(--color-border)">
               <table className="w-full min-w-[1120px] text-left">
-                <thead className="bg-(--color-surface-2)">
+                <thead className="sticky top-0 z-10 bg-(--color-surface-2)">
                   <tr>
                     {[
                       "Fecha",
@@ -765,7 +1140,7 @@ export function AdminAiDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.daily.length === 0 ? (
+                  {displayedDaily.length === 0 ? (
                     <tr>
                       <td
                         colSpan={10}
@@ -775,43 +1150,45 @@ export function AdminAiDashboard() {
                       </td>
                     </tr>
                   ) : (
-                    data.daily.map((day) => (
+                    displayedDaily.map((day) => (
                       <tr
                         key={day.date}
                         className="border-t border-(--color-border)"
                       >
-                        <td className="px-4 py-3 text-sm">{day.date}</td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm font-semibold text-blue-100">
+                          {day.date}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-blue-200">
                           {integerFormatter.format(
                             day.officialCompletionCalls,
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-violet-200">
                           {integerFormatter.format(
                             day.officialTranscriptionCalls,
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-cyan-200">
                           {integerFormatter.format(day.officialInputTokens)}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-purple-200">
                           {integerFormatter.format(
                             day.officialCachedInputTokens,
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-amber-200">
                           {integerFormatter.format(day.officialOutputTokens)}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm font-semibold text-sky-200">
                           {integerFormatter.format(day.officialTokens)}
                         </td>
-                        <td className="px-4 py-3 text-sm font-semibold">
+                        <td className="px-4 py-3 text-sm font-semibold text-emerald-300">
                           {usdFormatter.format(day.officialCostUsd)}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm text-lime-200">
                           {integerFormatter.format(day.attributedCalls)}
                         </td>
-                        <td className="px-4 py-3 text-sm font-semibold">
+                        <td className="px-4 py-3 text-sm font-semibold text-lime-300">
                           {usdFormatter.format(day.estimatedCostUsd)}
                         </td>
                       </tr>
