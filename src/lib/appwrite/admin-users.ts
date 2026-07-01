@@ -50,16 +50,31 @@ async function request<T>(
         code: "NO_SESSION",
         message: "Tu sesión expiro.",
       };
-    if (response.status === 403)
+    const payload = (await response
+      .clone()
+      .json()
+      .catch(() => null)) as AdminUsersErrorResponse | null;
+    if (response.status === 403) {
+      const message =
+        payload?.message ?? "No tienes acceso al panel de usuarios.";
+      if (
+        message !== "No tienes acceso a este recurso." &&
+        message !== "No tienes acceso al panel de usuarios."
+      ) {
+        return {
+          success: false,
+          code: "REQUEST_ERROR",
+          message,
+        };
+      }
+
       return {
         success: false,
         code: "FORBIDDEN",
-        message: "No tienes acceso al panel de usuarios.",
+        message,
       };
+    }
     if (!response.ok) {
-      const payload = (await response
-        .json()
-        .catch(() => null)) as AdminUsersErrorResponse | null;
       return {
         success: false,
         code: "REQUEST_ERROR",

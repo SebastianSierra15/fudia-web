@@ -10,10 +10,22 @@ import { AdminShell } from "./AdminShell";
 
 type AccessStatus = "checking" | "allowed";
 
+function getCurrentMonthLabel() {
+  const now = new Date();
+  const label = new Intl.DateTimeFormat("es-CO", {
+    month: "long",
+    year: "numeric",
+  }).format(now);
+
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function AdminTemplate() {
   const router = useRouter();
   const [status, setStatus] = useState<AccessStatus>("checking");
   const [userLabel, setUserLabel] = useState("Administrador");
+  const [monthLabel] = useState(getCurrentMonthLabel);
+  const subtitle = `Resumen de actividad y decisiones · ${monthLabel}`;
 
   useEffect(() => {
     let isActive = true;
@@ -58,7 +70,7 @@ export function AdminTemplate() {
     return (
       <AdminShell
         title="Panel de Administracion"
-        subtitle="Resumen de actividad y decisiones"
+        subtitle={subtitle}
         userLabel={userLabel}
       >
         <div className="flex min-h-[360px] items-center justify-center">
@@ -76,7 +88,7 @@ export function AdminTemplate() {
   return (
     <AdminShell
       title="Panel de Administracion"
-      subtitle="Resumen de actividad y decisiones"
+      subtitle={subtitle}
       userLabel={userLabel}
     >
       <AdminDashboard />

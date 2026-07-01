@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Download,
   ExternalLink,
-  MinusCircle,
   RefreshCw,
   Search,
   ServerCog,
@@ -30,7 +31,6 @@ import {
 } from "@/src/lib/admin-cache/client";
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
-import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
 import { AdminLogDetailDrawer } from "./AdminLogDetailDrawer";
 import { useAdminHeaderActions } from "../templates/AdminShell";
 
@@ -39,6 +39,7 @@ type LevelFilter = "all" | AdminLogLevel;
 type SourceFilter = "all" | AdminLogSource;
 
 const LOGS_CACHE_STALE_MS = 60 * 1000;
+const LOGS_PAGE_SIZE = 20;
 
 const integerFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
@@ -49,6 +50,21 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 4,
 });
+
+function formatLogComparison(
+  comparison: AdminLogsResponse["comparison"]["totalLogs"] | null,
+) {
+  if (!comparison || comparison.percent === null) {
+    return null;
+  }
+
+  const sign = comparison.percent > 0 ? "+" : "";
+  return {
+    primaryText: `${sign}${comparison.percent.toFixed(1)}% ${comparison.label}`,
+    className:
+      comparison.percent >= 0 ? "text-(--color-accent)" : "text-red-300",
+  };
+}
 
 const sourceLabel: Record<AdminLogSource, string> = {
   appwrite: "Appwrite",
@@ -156,18 +172,6 @@ function matchesSearch(entry: AdminLogEntry, search: string) {
   ].some((value) => value.toLowerCase().includes(normalized));
 }
 
-function getSourceDescription(status: AdminLogsResponse["sources"][keyof AdminLogsResponse["sources"]]["status"]) {
-  if (status === "ok") {
-    return "Datos disponibles";
-  }
-
-  if (status === "partial") {
-    return "Informacion parcial";
-  }
-
-  return "Pendiente";
-}
-
 function AdminLogsSkeleton() {
   return (
     <div className="space-y-5">
@@ -226,6 +230,7 @@ export function AdminLogsDashboard({
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [functionFilter, setFunctionFilter] = useState("all");
+  const [page, setPage] = useState(1);
   const [selectedEntry, setSelectedEntry] = useState<AdminLogEntry | null>(null);
 
   const selectEntry = useCallback(
@@ -347,15 +352,18 @@ export function AdminLogsDashboard({
       return matchesSearch(entry, search);
     });
   }, [data?.entries, functionFilter, levelFilter, search, sourceFilter]);
-
-  const sourceCards = data
-    ? [
-        { label: "Ejecuciones", state: data.sources.appwriteExecutions },
-        { label: "Logs internos", state: data.sources.systemLogs },
-        { label: "Sentry", state: data.sources.sentry },
-        { label: "Costo IA", state: data.sources.aiTelemetry },
-      ]
-    : [];
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredEntries.length / LOGS_PAGE_SIZE),
+  );
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * LOGS_PAGE_SIZE;
+  const paginatedEntries = filteredEntries.slice(
+    pageStart,
+    pageStart + LOGS_PAGE_SIZE,
+  );
+  const visibleStart = filteredEntries.length === 0 ? 0 : pageStart + 1;
+  const visibleEnd = Math.min(pageStart + LOGS_PAGE_SIZE, filteredEntries.length);
 
   const handleDateChange = (nextDate: string) => {
     if (!nextDate || nextDate > currentDate || nextDate === date) {
@@ -369,6 +377,7 @@ export function AdminLogsDashboard({
         ? "refreshing"
         : "loading",
     );
+    setPage(1);
     setDate(nextDate);
   };
 
@@ -503,6 +512,7 @@ export function AdminLogsDashboard({
                 label: "Errores hoy",
                 value: integerFormatter.format(data.summary.errors),
                 hint: `${integerFormatter.format(data.summary.warnings)} advertencias`,
+                comparison: data.comparison.errors,
                 icon: AlertTriangle,
                 tone: data.summary.errors > 0 ? "text-red-400" : "text-foreground",
                 iconClassName: "bg-red-500/15 text-red-300",
@@ -511,6 +521,7 @@ export function AdminLogsDashboard({
                 label: "Costo IA hoy",
                 value: usdFormatter.format(data.summary.aiCostUsd),
                 hint: "acumulado del dia",
+                comparison: data.comparison.aiCostUsd,
                 icon: WalletCards,
                 tone: "text-(--color-accent)",
                 iconClassName: "bg-emerald-500/15 text-emerald-300",
@@ -519,6 +530,7 @@ export function AdminLogsDashboard({
                 label: "Funciones ejecutadas",
                 value: integerFormatter.format(data.summary.functionsExecuted),
                 hint: "ejecuciones hoy",
+                comparison: data.comparison.functionsExecuted,
                 icon: ServerCog,
                 tone: "text-foreground",
                 iconClassName: "bg-blue-500/15 text-blue-300",
@@ -527,12 +539,14 @@ export function AdminLogsDashboard({
                 label: "Total logs hoy",
                 value: integerFormatter.format(data.summary.totalLogs),
                 hint: "todos los niveles",
+                comparison: data.comparison.totalLogs,
                 icon: ClipboardList,
                 tone: "text-foreground",
                 iconClassName: "bg-amber-500/15 text-amber-300",
               },
             ].map((metric) => {
               const Icon = metric.icon;
+              const comparison = formatLogComparison(metric.comparison);
               return (
                 <article
                   key={metric.label}
@@ -551,6 +565,13 @@ export function AdminLogsDashboard({
                   <p className={`mt-4 text-3xl font-bold ${metric.tone}`}>
                     {metric.value}
                   </p>
+                  {comparison ? (
+                    <p className="mt-1 text-xs text-(--color-muted)">
+                      <span className={`font-semibold ${comparison.className}`}>
+                        {comparison.primaryText}
+                      </span>
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs text-(--color-muted)">
                     {metric.hint}
                   </p>
@@ -569,7 +590,10 @@ export function AdminLogsDashboard({
                 />
                 <input
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Buscar funcion, usuario o ejecucion..."
                   className="h-9 w-full rounded-lg border border-(--color-border) bg-(--color-surface-2) pl-10 pr-3 text-sm outline-none transition-colors focus:border-(--color-accent-strong)"
                 />
@@ -591,9 +615,10 @@ export function AdminLogsDashboard({
 
               <select
                 value={levelFilter}
-                onChange={(event) =>
-                  setLevelFilter(event.target.value as LevelFilter)
-                }
+                onChange={(event) => {
+                  setLevelFilter(event.target.value as LevelFilter);
+                  setPage(1);
+                }}
                 className="h-9 cursor-pointer rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm"
               >
                 <option value="all">Todos los niveles</option>
@@ -606,9 +631,10 @@ export function AdminLogsDashboard({
 
               <select
                 value={sourceFilter}
-                onChange={(event) =>
-                  setSourceFilter(event.target.value as SourceFilter)
-                }
+                onChange={(event) => {
+                  setSourceFilter(event.target.value as SourceFilter);
+                  setPage(1);
+                }}
                 className="h-9 cursor-pointer rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm"
               >
                 <option value="all">Todas las fuentes</option>
@@ -621,7 +647,10 @@ export function AdminLogsDashboard({
 
               <select
                 value={functionFilter}
-                onChange={(event) => setFunctionFilter(event.target.value)}
+                onChange={(event) => {
+                  setFunctionFilter(event.target.value);
+                  setPage(1);
+                }}
                 className="h-9 cursor-pointer rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-sm"
               >
                 <option value="all">Todas las funciones</option>
@@ -668,7 +697,7 @@ export function AdminLogsDashboard({
                       </td>
                     </tr>
                   ) : (
-                    filteredEntries.map((entry) => (
+                    paginatedEntries.map((entry) => (
                       <tr
                         key={`${entry.source}-${entry.id}`}
                         role="button"
@@ -738,9 +767,44 @@ export function AdminLogsDashboard({
                 </tbody>
               </table>
             </div>
+            <div className="flex flex-col gap-3 border-t border-(--color-border) px-4 py-3 text-sm text-(--color-muted) sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Mostrando {integerFormatter.format(visibleStart)}-
+                {integerFormatter.format(visibleEnd)} de{" "}
+                {integerFormatter.format(filteredEntries.length)} logs
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Pagina anterior"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-(--color-border) bg-(--color-surface-2) text-(--color-muted) transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-(--color-accent) px-2 text-sm font-bold text-(--color-accent-contrast)">
+                  {integerFormatter.format(currentPage)}
+                </span>
+                <span className="text-xs text-(--color-muted-2)">
+                  de {integerFormatter.format(totalPages)}
+                </span>
+                <button
+                  type="button"
+                  title="Pagina siguiente"
+                  disabled={currentPage >= totalPages}
+                  onClick={() =>
+                    setPage((current) => Math.min(totalPages, current + 1))
+                  }
+                  className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-(--color-border) bg-(--color-surface-2) text-(--color-muted) transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section>
             <div className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
               <p className="text-xs font-semibold uppercase text-(--color-muted)">
                 Resumen por funcion
@@ -771,33 +835,6 @@ export function AdminLogsDashboard({
                 )}
               </div>
             </div>
-            <div className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
-              <p className="text-xs font-semibold uppercase text-(--color-muted)">
-                Fuentes
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {sourceCards.map((source) => (
-                  <div
-                    key={source.label}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-(--color-surface-2) p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {source.label}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-(--color-muted)">
-                        {getSourceDescription(source.state.status)}
-                      </p>
-                    </div>
-                    {source.state.status === "unavailable" ? (
-                      <MinusCircle size={16} className="text-red-300" />
-                    ) : (
-                      <AdminSourceBadge status={source.state.status} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
           </section>
 
           <section className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
@@ -810,7 +847,6 @@ export function AdminLogsDashboard({
                   Issues no resueltos e investigacion tecnica.
                 </p>
               </div>
-              <AdminSourceBadge status={data.sources.sentry.status} />
             </div>
             {data.sentrySummary ? (
               <div className="mt-5 grid gap-4 xl:grid-cols-3">

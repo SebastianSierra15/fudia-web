@@ -27,6 +27,24 @@ function getMonth(now = new Date()) {
   return now.toISOString().slice(0, 7);
 }
 
+function getPreviousMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function compareKpi(current: number, previous: number) {
+  return {
+    percent:
+      previous > 0
+        ? Math.round(((current - previous) / previous) * 1000) / 10
+        : null,
+    current,
+    previous,
+    label: "vs mes anterior",
+  };
+}
+
 function getConfig() {
   const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
   const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
@@ -174,7 +192,7 @@ async function listMetricDocuments(query: AdminUsersQuery) {
   return response.json() as Promise<DocumentPage>;
 }
 
-async function listSummaryDocuments() {
+async function listSummaryDocuments(month = getMonth()) {
   const config = getConfig();
   if (!config) throw new Error("Missing Appwrite admin user configuration");
   const documents: AppwriteDocument[] = [];
@@ -182,7 +200,7 @@ async function listSummaryDocuments() {
   while (offset < MAX_SUMMARY_DOCUMENTS) {
     const url = new URL(`${config.endpoint}${documentPath(config)}`);
     [
-      Query.equal("metricsMonth", getMonth()),
+      Query.equal("metricsMonth", month),
       Query.limit(PAGE_SIZE),
       Query.offset(offset),
     ].forEach((item) => url.searchParams.append("queries[]", item));
@@ -243,16 +261,42 @@ export function parseAdminUsersQuery(
 export async function getAdminUsers(
   query: AdminUsersQuery,
 ): Promise<AdminUsersResponse> {
-  const [page, summaryDocuments] = await Promise.all([
+  const metricsMonth = getMonth();
+  const previousMonth = getPreviousMonth(metricsMonth);
+  const [page, summaryDocuments, previousSummaryDocuments] = await Promise.all([
     listMetricDocuments(query),
-    listSummaryDocuments(),
+    listSummaryDocuments(metricsMonth),
+    listSummaryDocuments(previousMonth),
   ]);
   const summaryUsers = summaryDocuments.map(mapUser);
-  const totalUsers = page.total ?? 0;
+  const previousSummaryUsers = previousSummaryDocuments.map(mapUser);
+  const totalUsers = summaryUsers.length;
+  const totalFilteredUsers = page.total ?? 0;
   const totalCost = summaryUsers.reduce(
     (total, user) => total + user.aiCostUsd,
     0,
   );
+  const previousTotalCost = previousSummaryUsers.reduce(
+    (total, user) => total + user.aiCostUsd,
+    0,
+  );
+  const premiumUsers = summaryUsers.filter((user) => user.plan === "premium")
+    .length;
+  const averageAiCostUsd = summaryUsers.length
+    ? totalCost / summaryUsers.length
+    : 0;
+  const incompleteOnboardingUsers = summaryUsers.filter(
+    (user) => user.onboardingStatus === "incomplete",
+  ).length;
+  const previousPremiumUsers = previousSummaryUsers.filter(
+    (user) => user.plan === "premium",
+  ).length;
+  const previousAverageAiCostUsd = previousSummaryUsers.length
+    ? previousTotalCost / previousSummaryUsers.length
+    : 0;
+  const previousIncompleteOnboardingUsers = previousSummaryUsers.filter(
+    (user) => user.onboardingStatus === "incomplete",
+  ).length;
   const warning =
     summaryUsers.length === 0
       ? "La proyeccion de usuarios aun no tiene datos. Ejecuta la sincronizacion administrativa para poblarla."
@@ -261,23 +305,27 @@ export async function getAdminUsers(
         : null;
   return {
     generatedAt: new Date().toISOString(),
-    metricsMonth: getMonth(),
+    metricsMonth,
     summary: {
       totalUsers,
-      premiumUsers: summaryUsers.filter((user) => user.plan === "premium")
-        .length,
-      averageAiCostUsd: summaryUsers.length
-        ? totalCost / summaryUsers.length
-        : 0,
-      incompleteOnboardingUsers: summaryUsers.filter(
-        (user) => user.onboardingStatus === "incomplete",
-      ).length,
+      premiumUsers,
+      averageAiCostUsd,
+      incompleteOnboardingUsers,
+    },
+    comparison: {
+      totalUsers: compareKpi(totalUsers, previousSummaryUsers.length),
+      premiumUsers: compareKpi(premiumUsers, previousPremiumUsers),
+      averageAiCostUsd: compareKpi(averageAiCostUsd, previousAverageAiCostUsd),
+      incompleteOnboardingUsers: compareKpi(
+        incompleteOnboardingUsers,
+        previousIncompleteOnboardingUsers,
+      ),
     },
     pagination: {
       page: query.page,
       pageSize: query.pageSize,
-      total: totalUsers,
-      totalPages: Math.max(1, Math.ceil(totalUsers / query.pageSize)),
+      total: totalFilteredUsers,
+      totalPages: Math.max(1, Math.ceil(totalFilteredUsers / query.pageSize)),
     },
     users: (page.documents ?? []).map(mapUser),
     filters: {
@@ -403,19 +451,28 @@ export async function changeAdminUserStatus(
     method: "PATCH",
     body: JSON.stringify({ status: accountStatus === "active" }),
   });
-  if (accountStatus === "suspended")
-    await request(`/users/${encodeURIComponent(userId)}/sessions`, {
-      method: "DELETE",
-    });
-  await updateMetric(userId, { accountStatus });
-  await writeSystemLog(
-    actorUserId,
-    "admin_user_status_changed",
-    userId,
-    accountStatus === "active"
-      ? "Cuenta activada por administracion."
-      : "Cuenta suspendida por administracion.",
-  );
+
+  const sideEffects: Promise<unknown>[] = [
+    updateMetric(userId, { accountStatus }),
+    writeSystemLog(
+      actorUserId,
+      "admin_user_status_changed",
+      userId,
+      accountStatus === "active"
+        ? "Cuenta activada por administracion."
+        : "Cuenta suspendida por administracion.",
+    ),
+  ];
+
+  if (accountStatus === "suspended") {
+    sideEffects.push(
+      request(`/users/${encodeURIComponent(userId)}/sessions`, {
+        method: "DELETE",
+      }),
+    );
+  }
+
+  await Promise.allSettled(sideEffects);
 }
 
 export async function changeAdminUserPlan(

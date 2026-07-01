@@ -124,6 +124,24 @@ function buildLogsRange(date: string) {
   };
 }
 
+function getPreviousDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() - 1);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function compareLogKpi(current: number, previous: number) {
+  return {
+    percent:
+      previous > 0
+        ? Math.round(((current - previous) / previous) * 1000) / 10
+        : null,
+    current,
+    previous,
+    label: "vs dia anterior",
+  };
+}
+
 function getAppwriteAdminConfig() {
   const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
   const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
@@ -707,10 +725,22 @@ export async function getAdminLogs(
   forceRefresh = false,
 ): Promise<AdminLogsResponse> {
   const range = buildLogsRange(date);
-  const [executionResult, systemLogsResult, aiCostResult, sentryResult] = await Promise.all([
+  const previousRange = buildLogsRange(getPreviousDate(date));
+  const [
+    executionResult,
+    systemLogsResult,
+    aiCostResult,
+    previousExecutionResult,
+    previousSystemLogsResult,
+    previousAiCostResult,
+    sentryResult,
+  ] = await Promise.all([
     fetchAppwriteExecutionEntries(range),
     fetchSystemLogEntries(range),
     fetchAiCostForDay(range),
+    fetchAppwriteExecutionEntries(previousRange),
+    fetchSystemLogEntries(previousRange),
+    fetchAiCostForDay(previousRange),
     getAdminSentrySummary(forceRefresh),
   ]);
   const executionEntries = executionResult.success ? executionResult.value : [];
@@ -740,6 +770,20 @@ export async function getAdminLogs(
   const functions = Array.from(
     new Set(entries.map((entry) => entry.functionName)),
   ).sort((a, b) => a.localeCompare(b));
+  const previousEntries = [
+    ...(previousExecutionResult.success ? previousExecutionResult.value : []),
+    ...(previousSystemLogsResult.success ? previousSystemLogsResult.value : []),
+  ];
+  const previousErrors = previousEntries.filter(
+    (entry) => entry.level === "error",
+  ).length;
+  const previousFunctions = Array.from(
+    new Set(previousEntries.map((entry) => entry.functionName)),
+  );
+  const aiCostUsd = aiCostResult.success ? aiCostResult.value : 0;
+  const previousAiCostUsd = previousAiCostResult.success
+    ? previousAiCostResult.value
+    : 0;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -754,7 +798,16 @@ export async function getAdminLogs(
       ).length,
       webLogs: systemEntries.filter((entry) => entry.source === "web").length,
       functionsExecuted: functions.length,
-      aiCostUsd: aiCostResult.success ? aiCostResult.value : 0,
+      aiCostUsd,
+    },
+    comparison: {
+      totalLogs: compareLogKpi(entries.length, previousEntries.length),
+      errors: compareLogKpi(errors, previousErrors),
+      functionsExecuted: compareLogKpi(
+        functions.length,
+        previousFunctions.length,
+      ),
+      aiCostUsd: compareLogKpi(aiCostUsd, previousAiCostUsd),
     },
     filters: {
       levels: ["debug", "info", "warn", "error"],

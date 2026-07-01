@@ -74,9 +74,35 @@ function getCurrentMonth(now = new Date()) {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function getPreviousMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 function getMonthRange(now = new Date()) {
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   return { month: getCurrentMonth(now), start: start.toISOString(), end: now.toISOString() };
+}
+
+function getMonthRangeFromMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const start = new Date(Date.UTC(year, monthNumber - 1, 1));
+  const end = new Date(Date.UTC(year, monthNumber, 1));
+  return { month, start: start.toISOString(), end: end.toISOString() };
+}
+
+function calculateComparison(current: number | null, previous: number | null, label: string) {
+  if (current === null || previous === null || previous <= 0) {
+    return { percent: null, current, previous, label };
+  }
+
+  return {
+    percent: Math.round(((current - previous) / previous) * 1000) / 10,
+    current,
+    previous,
+    label,
+  };
 }
 
 function documentPath(
@@ -145,13 +171,21 @@ async function buildSummary(growthWeeks: number) {
 
   const now = new Date();
   const range = getMonthRange(now);
+  const previousMonth = getPreviousMonth(range.month);
+  const previousRange = getMonthRangeFromMonth(previousMonth);
   const warnings: string[] = [];
   let users: AppwriteDocument[] = [];
+  let previousUsers: AppwriteDocument[] = [];
   let usersSource: "ok" | "unavailable" = "ok";
 
   try {
-    users = await listDocuments(config, config.metricsCollectionId, [
-      Query.equal("metricsMonth", range.month),
+    [users, previousUsers] = await Promise.all([
+      listDocuments(config, config.metricsCollectionId, [
+        Query.equal("metricsMonth", range.month),
+      ]),
+      listDocuments(config, config.metricsCollectionId, [
+        Query.equal("metricsMonth", previousMonth),
+      ]),
     ]);
   } catch {
     usersSource = "unavailable";
@@ -163,6 +197,8 @@ async function buildSummary(growthWeeks: number) {
   const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
   const activeUsers = users.filter((user) => user.accountStatus !== "suspended");
   const premiumUsers = activeUsers.filter((user) => user.plan === "premium").length;
+  const previousActiveUsers = previousUsers.filter((user) => user.accountStatus !== "suspended");
+  const previousPremiumUsers = previousActiveUsers.filter((user) => user.plan === "premium").length;
   const activation = {
     created: users.length,
     verified: users.filter((user) => user.emailVerified === true).length,
@@ -173,11 +209,19 @@ async function buildSummary(growthWeeks: number) {
   let telemetrySource: "ok" | "unavailable" = "ok";
   let aiCalls: number | null = 0;
   let aiCostUsd: number | null = 0;
+  let previousAiCalls: number | null = 0;
+  let previousAiCostUsd: number | null = 0;
   let aiByFunction: AdminDashboardBar[] = [];
   try {
-    const telemetry = await listDocuments(config, config.telemetryCollectionId, [
-      Query.greaterThanEqual("occurredAt", range.start),
-      Query.lessThan("occurredAt", range.end),
+    const [telemetry, previousTelemetry] = await Promise.all([
+      listDocuments(config, config.telemetryCollectionId, [
+        Query.greaterThanEqual("occurredAt", range.start),
+        Query.lessThan("occurredAt", range.end),
+      ]),
+      listDocuments(config, config.telemetryCollectionId, [
+        Query.greaterThanEqual("occurredAt", previousRange.start),
+        Query.lessThan("occurredAt", previousRange.end),
+      ]),
     ]);
     const byFunction = new Map<string, number>();
     telemetry.forEach((event) => {
@@ -185,13 +229,20 @@ async function buildSummary(growthWeeks: number) {
       byFunction.set(functionName, (byFunction.get(functionName) ?? 0) + 1);
       aiCostUsd = (aiCostUsd ?? 0) + toNumber(event.estimatedCostUsd);
     });
+    previousTelemetry.forEach((event) => {
+      previousAiCostUsd = (previousAiCostUsd ?? 0) + toNumber(event.estimatedCostUsd);
+    });
     aiCalls = telemetry.length;
+    previousAiCalls = previousTelemetry.length;
     aiCostUsd = Math.round((aiCostUsd ?? 0) * 1_000_000) / 1_000_000;
+    previousAiCostUsd = Math.round((previousAiCostUsd ?? 0) * 1_000_000) / 1_000_000;
     aiByFunction = sortBars(byFunction);
   } catch {
     telemetrySource = "unavailable";
     aiCalls = null;
     aiCostUsd = null;
+    previousAiCalls = null;
+    previousAiCostUsd = null;
     warnings.push("La telemetria de IA aun no esta disponible.");
   }
 
@@ -242,6 +293,7 @@ async function buildSummary(growthWeeks: number) {
   }
 
   const estimatedMrrUsd = Math.round(premiumUsers * PREMIUM_PRICE_USD * 100) / 100;
+  const previousEstimatedMrrUsd = Math.round(previousPremiumUsers * PREMIUM_PRICE_USD * 100) / 100;
   const summary: AdminDashboardSummary = {
     success: true,
     generatedAt: now.toISOString(),
@@ -254,6 +306,13 @@ async function buildSummary(growthWeeks: number) {
       estimatedMrrUsd,
       aiCalls,
       aiCostUsd,
+    },
+    comparison: {
+      totalUsers: calculateComparison(users.length, previousUsers.length, "vs mes anterior"),
+      premiumUsers: calculateComparison(premiumUsers, previousPremiumUsers, "vs mes anterior"),
+      estimatedMrrUsd: calculateComparison(estimatedMrrUsd, previousEstimatedMrrUsd, "vs mes anterior"),
+      aiCalls: calculateComparison(aiCalls, previousAiCalls, "vs mes anterior"),
+      aiCostUsd: calculateComparison(aiCostUsd, previousAiCostUsd, "vs mes anterior"),
     },
     growth: buildGrowth(users, now, growthWeeks),
     aiByFunction,

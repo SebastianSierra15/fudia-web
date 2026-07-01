@@ -18,11 +18,54 @@ function error(message: string, status: number) {
   );
 }
 
-function getOrigin(request: NextRequest) {
+function parseOrigin(origin: string) {
+  try {
+    return new URL(origin);
+  } catch {
+    return null;
+  }
+}
+
+function isBindableHost(hostname: string) {
+  return ["0.0.0.0", "::", "[::]"].includes(hostname);
+}
+
+function toPublicOrigin(origin: string) {
+  const url = parseOrigin(origin);
+  if (!url) return "";
+  if (isBindableHost(url.hostname)) {
+    url.hostname = "localhost";
+  }
+  return url.origin;
+}
+
+function getForwardedOrigin(request: NextRequest) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (!forwardedHost) return "";
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
+  const host = forwardedHost.split(",")[0]?.trim();
+  const protocol = forwardedProto.split(",")[0]?.trim();
+  if (!host || !protocol) return "";
+  return toPublicOrigin(`${protocol}://${host}`);
+}
+
+function getConfiguredOrigin() {
   const configured =
     process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (configured) return configured;
-  return request.nextUrl.origin;
+  if (!configured) return "";
+  const origin = toPublicOrigin(configured);
+  if (!origin) return "";
+  const url = parseOrigin(origin);
+  return url && !isBindableHost(url.hostname) ? origin : "";
+}
+
+function getOrigin(request: NextRequest) {
+  return (
+    getConfiguredOrigin() ||
+    getForwardedOrigin(request) ||
+    toPublicOrigin(request.nextUrl.origin) ||
+    "http://localhost:3000"
+  );
 }
 
 export async function POST(request: NextRequest) {

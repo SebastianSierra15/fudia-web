@@ -10,6 +10,13 @@ export type AdminDashboardFunnel = {
   firstMealLogged: number;
 };
 
+export type AdminKpiComparison = {
+  percent: number | null;
+  current: number | null;
+  previous: number | null;
+  label: string;
+};
+
 export type AdminDashboardSummary = {
   success: true;
   generatedAt: string;
@@ -22,6 +29,13 @@ export type AdminDashboardSummary = {
     estimatedMrrUsd: number;
     aiCalls: number | null;
     aiCostUsd: number | null;
+  };
+  comparison: {
+    totalUsers: AdminKpiComparison;
+    premiumUsers: AdminKpiComparison;
+    estimatedMrrUsd: AdminKpiComparison;
+    aiCalls: AdminKpiComparison;
+    aiCostUsd: AdminKpiComparison;
   };
   growth: AdminDashboardBar[];
   aiByFunction: AdminDashboardBar[];

@@ -59,6 +59,13 @@ export type AdminLogsFunctionSummary = {
   avgDurationMs: number | null;
 };
 
+export type AdminLogsKpiComparison = {
+  percent: number | null;
+  current: number;
+  previous: number;
+  label: string;
+};
+
 export type AdminLogsResponse = {
   generatedAt: string;
   range: {
@@ -76,6 +83,12 @@ export type AdminLogsResponse = {
     webLogs: number;
     functionsExecuted: number;
     aiCostUsd: number;
+  };
+  comparison: {
+    totalLogs: AdminLogsKpiComparison;
+    errors: AdminLogsKpiComparison;
+    functionsExecuted: AdminLogsKpiComparison;
+    aiCostUsd: AdminLogsKpiComparison;
   };
   filters: {
     levels: AdminLogLevel[];

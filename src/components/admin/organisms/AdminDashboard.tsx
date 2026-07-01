@@ -34,13 +34,29 @@ const DASHBOARD_BAR_COLORS = [
   "bg-sky-500",
 ];
 
+function formatComparison(
+  comparison: AdminDashboardSummary["comparison"]["totalUsers"] | null,
+) {
+  if (!comparison || comparison.percent === null) {
+    return null;
+  }
+
+  const sign = comparison.percent > 0 ? "+" : "";
+  return {
+    primaryText: `${sign}${comparison.percent.toFixed(1)}% ${comparison.label}`,
+    className:
+      comparison.percent >= 0 ? "text-(--color-accent)" : "text-red-300",
+  };
+}
+
 function getDashboardCacheKey(weeks: number) {
   return `admin:dashboard:${weeks}`;
 }
 
-function Kpi({ title, value, hint, icon: Icon, tone = "accent" }: { title: string; value: string; hint: string; icon: typeof Users; tone?: "accent" | "blue" | "amber" | "green" }) {
+function Kpi({ title, value, hint, comparison, icon: Icon, tone = "accent" }: { title: string; value: string; hint: string; comparison?: AdminDashboardSummary["comparison"]["totalUsers"] | null; icon: typeof Users; tone?: "accent" | "blue" | "amber" | "green" }) {
   const colors = { accent: "bg-(--color-accent-soft) text-(--color-accent)", blue: "bg-blue-500/15 text-blue-300", amber: "bg-amber-500/15 text-amber-300", green: "bg-emerald-500/15 text-emerald-300" }[tone];
-  return <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5"><div className="flex items-start justify-between gap-3"><p className="text-sm text-(--color-muted)">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${colors}`}><Icon size={17} /></span></div><p className="mt-4 text-3xl font-bold">{value}</p><p className="mt-2 text-xs text-(--color-muted)">{hint}</p></article>;
+  const formattedComparison = formatComparison(comparison ?? null);
+  return <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5"><div className="flex items-start justify-between gap-3"><p className="text-sm text-(--color-muted)">{title}</p><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${colors}`}><Icon size={17} /></span></div><p className="mt-4 text-3xl font-bold">{value}</p>{formattedComparison ? <p className="mt-2 text-xs text-(--color-muted)"><span className={`font-semibold ${formattedComparison.className}`}>{formattedComparison.primaryText}</span></p> : null}<p className="mt-1 text-xs text-(--color-muted)">{hint}</p></article>;
 }
 
 function Bars({ items, animated, money = false, selectedKey = null, onSelect }: { items: AdminDashboardBar[]; animated: boolean; money?: boolean; selectedKey?: string | null; onSelect?: (item: AdminDashboardBar) => void }) {
@@ -145,9 +161,9 @@ export function AdminDashboard() {
   if (!data) return <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-5 text-sm text-red-100">{error || "No se pudo cargar el dashboard."}</div>;
   const base = Math.max(1, data.activation.created);
 
-  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-(--color-border) pb-4"><p className="text-sm text-(--color-muted)">Resumen operativo - {data.month}</p></div>
+  return <div className="space-y-5">
     {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}{data.warnings.length ? <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Datos parciales: {data.warnings.join(" ")}</p> : null}{dashboardFilter ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-(--color-border) bg-(--color-surface) px-4 py-3 text-sm"><span className="text-(--color-muted)">Filtro activo: <strong className="text-foreground">{dashboardFilter.label}</strong></span><button type="button" onClick={() => setDashboardFilter(null)} className="cursor-pointer font-semibold text-(--color-accent) hover:text-(--color-accent-strong)">Limpiar filtro</button></div> : null}
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><Kpi title="Usuarios totales" value={integer.format(data.summary.totalUsers)} hint="proyeccion actual" icon={Users} tone="blue" /><Kpi title="Activos hoy" value={integer.format(data.summary.activeToday)} hint={`${integer.format(data.retention.active7Days)} en 7 dias`} icon={Activity} /><Kpi title="Premium" value={integer.format(data.summary.premiumUsers)} hint="acceso Premium activo" icon={UserCheck} tone="green" /><Kpi title="MRR estimado" value={usd.format(data.summary.estimatedMrrUsd)} hint="sin cobro Stripe" icon={WalletCards} tone="green" /><Kpi title="Llamadas IA" value={data.summary.aiCalls === null ? "Sin dato" : integer.format(data.summary.aiCalls)} hint="telemetria atribuida" icon={BrainCircuit} tone="amber" /><Kpi title="Costo IA" value={data.summary.aiCostUsd === null ? "Sin dato" : usd.format(data.summary.aiCostUsd)} hint="estimado este mes" icon={ChartNoAxesCombined} tone="amber" /></section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><Kpi title="Usuarios totales" value={integer.format(data.summary.totalUsers)} comparison={data.comparison.totalUsers} hint="proyeccion actual" icon={Users} tone="blue" /><Kpi title="Activos hoy" value={integer.format(data.summary.activeToday)} hint={`${integer.format(data.retention.active7Days)} en 7 dias`} icon={Activity} /><Kpi title="Premium" value={integer.format(data.summary.premiumUsers)} comparison={data.comparison.premiumUsers} hint="acceso Premium activo" icon={UserCheck} tone="green" /><Kpi title="MRR estimado" value={usd.format(data.summary.estimatedMrrUsd)} comparison={data.comparison.estimatedMrrUsd} hint="sin cobro Stripe" icon={WalletCards} tone="green" /><Kpi title="Llamadas IA" value={data.summary.aiCalls === null ? "Sin dato" : integer.format(data.summary.aiCalls)} comparison={data.comparison.aiCalls} hint="telemetria atribuida" icon={BrainCircuit} tone="amber" /><Kpi title="Costo IA" value={data.summary.aiCostUsd === null ? "Sin dato" : usd.format(data.summary.aiCostUsd)} comparison={data.comparison.aiCostUsd} hint="estimado este mes" icon={ChartNoAxesCombined} tone="amber" /></section>
     <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,0.95fr)]"><article className="min-w-0 rounded-lg border border-(--color-border) bg-(--color-surface) p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold">Crecimiento de usuarios</h2><p className="mt-1 text-xs text-(--color-muted)">Nuevos registros por semana</p>{rangeLoading ? <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-(--color-accent)"><RefreshCw size={13} className="animate-spin" />Cargando rango...</p> : null}</div><div className="flex rounded-lg bg-(--color-surface-2) p-1">{([8, 12, 24] as const).map((value) => <button key={value} type="button" onClick={() => { if (value !== weeks) { setRangeLoading(true); setLoading(!readAdminCache<AdminDashboardSummary>(getDashboardCacheKey(value))); setWeeks(value); } }} className={`h-7 cursor-pointer rounded-md px-2 text-xs ${weeks === value ? "bg-(--color-accent) font-bold text-(--color-accent-contrast)" : "text-(--color-muted)"}`}>{value} sem.</button>)}</div></div><Bars items={data.growth} animated={animated} selectedKey={dashboardFilter?.group === "growth" ? dashboardFilter.value : null} onSelect={(item) => toggleDashboardFilter("growth", item.label, `Semana ${item.label}`)} /></article><article className="min-w-0 rounded-lg border border-(--color-border) bg-(--color-surface) p-5"><div className="flex items-start justify-between"><div><h2 className="font-bold">Uso de IA</h2><p className="mt-1 text-xs text-(--color-muted)">Llamadas por Function</p></div><BrainCircuit size={19} className="text-(--color-accent)" /></div><HorizontalBars items={data.aiByFunction} animated={animated} selectedKey={dashboardFilter?.group === "ai" ? dashboardFilter.value : null} onSelect={(item) => toggleDashboardFilter("ai", item.label, `Funcion ${item.label}`)} /></article></section>
     <section className="grid gap-4 xl:grid-cols-2">
       <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">

@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
 type AdminConfirmModalProps = {
@@ -23,13 +24,29 @@ export function AdminConfirmModal({
 }: AdminConfirmModalProps) {
   if (!open) return null;
 
+  const handleCancel = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onCancel();
+  };
+
+  const handleConfirm = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onConfirm();
+  };
+
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-4">
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-4"
+      onClick={(event) => event.stopPropagation()}
+    >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-confirm-title"
         className="w-full max-w-md rounded-lg border border-(--color-border) bg-(--color-surface) p-5 shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-300">
@@ -38,7 +55,7 @@ export function AdminConfirmModal({
           <button
             type="button"
             title="Cerrar confirmacion"
-            onClick={onCancel}
+            onClick={handleCancel}
             className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-(--color-muted) hover:bg-(--color-surface-2) hover:text-foreground"
           >
             <X size={18} />
@@ -53,14 +70,14 @@ export function AdminConfirmModal({
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             className="h-10 cursor-pointer rounded-lg border border-(--color-border) bg-(--color-surface-2) text-sm font-semibold text-(--color-muted) hover:text-foreground"
           >
             Cancelar
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className={`h-10 cursor-pointer rounded-lg text-sm font-bold ${
               tone === "danger"
                 ? "bg-red-500 text-white hover:bg-red-400"

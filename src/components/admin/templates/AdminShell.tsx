@@ -10,6 +10,7 @@ import {
   BrainCircuit,
   ChevronUp,
   CircleHelp,
+  Copyright,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -276,6 +277,7 @@ export function AdminShell({
 }: AdminShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dynamicActions, setDynamicActions] = useState<ReactNode>(null);
+  const currentYear = new Date().getFullYear();
   const headerActionsContext = useMemo(
     () => ({ setActions: setDynamicActions }),
     [],
@@ -321,8 +323,8 @@ export function AdminShell({
             />
           </aside>
 
-          <main className="min-h-screen lg:pl-[210px]">
-            <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7">
+          <main className="min-h-screen min-w-0 overflow-x-hidden lg:pl-[210px]">
+            <header className="fixed top-0 right-0 left-0 z-30 flex min-h-14 items-center justify-between gap-4 border-b border-(--color-border) bg-(--color-bg)/95 px-4 backdrop-blur md:px-7 lg:left-[210px]">
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
@@ -351,9 +353,15 @@ export function AdminShell({
             </header>
 
             <div
-              className={`mx-auto max-w-[1240px] animate-[admin-fade-in_0.28s_ease-out] px-4 py-4 transition-[padding,max-width] duration-300 ease-out md:px-7 ${isRightPanelOpen ? "xl:max-w-none xl:pr-[397px]" : ""}`}
+              className={`mx-auto flex min-h-screen max-w-[1240px] min-w-0 animate-[admin-fade-in_0.28s_ease-out] flex-col px-4 pt-[4.5rem] pb-4 transition-[padding,max-width] duration-300 ease-out md:px-7 ${isRightPanelOpen ? "xl:max-w-none xl:pr-[397px]" : ""}`}
             >
-              {children}
+              <div className="min-w-0">{children}</div>
+              <footer className="mt-auto flex items-center justify-center gap-1.5 border-t border-(--color-border) py-5 text-center text-xs text-(--color-muted)">
+                <Copyright size={13} />
+                <span>
+                  {currentYear} Fudia. Todos los derechos reservados.
+                </span>
+              </footer>
             </div>
           </main>
         </div>

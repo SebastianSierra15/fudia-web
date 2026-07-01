@@ -82,6 +82,20 @@ export type AiAttributionCoverage = {
   officialCostUsd: number;
 };
 
+export type AiUsageComparisonPeriod = {
+  range: AiUsageRange;
+  summary: Pick<
+    AiUsageSummary,
+    | "officialCalls"
+    | "officialInputTokens"
+    | "officialOutputTokens"
+    | "officialTotalTokens"
+    | "officialCostUsd"
+    | "estimatedAttributedCostUsd"
+  >;
+  daily: AiDailyUsage[];
+};
+
 export type AiUsageResponse = {
   success: true;
   generatedAt: string;
@@ -94,6 +108,9 @@ export type AiUsageResponse = {
   topUsers: AiTopUser[];
   attributionCoverage: AiAttributionCoverage;
   telemetryStartedAt: string | null;
+  comparison: {
+    previousMonth: AiUsageComparisonPeriod | null;
+  };
   sources: {
     openaiCompletions: AiSourceState;
     openaiTranscriptions: AiSourceState;

@@ -52,6 +52,12 @@ export type AdminUsersResponse = {
     averageAiCostUsd: number;
     incompleteOnboardingUsers: number;
   };
+  comparison: {
+    totalUsers: AdminUsersKpiComparison;
+    premiumUsers: AdminUsersKpiComparison;
+    averageAiCostUsd: AdminUsersKpiComparison;
+    incompleteOnboardingUsers: AdminUsersKpiComparison;
+  };
   pagination: {
     page: number;
     pageSize: number;
@@ -66,6 +72,13 @@ export type AdminUsersResponse = {
     sorts: AdminUserSort[];
   };
   warning: string | null;
+};
+
+export type AdminUsersKpiComparison = {
+  percent: number | null;
+  current: number;
+  previous: number;
+  label: string;
 };
 
 export type AdminUsersErrorResponse = { success: false; message: string };

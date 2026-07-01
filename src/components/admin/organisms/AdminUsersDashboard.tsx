@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   CircleAlert,
@@ -57,6 +64,35 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 3,
   maximumFractionDigits: 3,
 });
+
+function formatTotalUsersTrend(
+  comparison: AdminUsersResponse["comparison"]["totalUsers"] | null,
+) {
+  if (!comparison) {
+    return null;
+  }
+
+  if (comparison.percent === null) {
+    const delta = comparison.current - comparison.previous;
+    const sign = delta > 0 ? "+" : "";
+    return {
+      text: `${sign}${integerFormatter.format(delta)} este mes`,
+      className:
+        delta > 0
+          ? "text-(--color-accent)"
+          : delta < 0
+            ? "text-red-300"
+            : "text-(--color-muted)",
+    };
+  }
+
+  const sign = comparison.percent > 0 ? "+" : "";
+  return {
+    text: `${sign}${comparison.percent.toFixed(1)}% este mes`,
+    className:
+      comparison.percent >= 0 ? "text-(--color-accent)" : "text-red-300",
+  };
+}
 
 type ConfirmationAction =
   | { kind: "status"; value: AdminUserAccountStatus }
@@ -147,6 +183,23 @@ function UserDetail({
   if (!user) return null;
   const nextStatus = user.accountStatus === "active" ? "suspended" : "active";
   const nextPlan = user.plan === "premium" ? "free" : "premium";
+  const requestChange = (
+    event: MouseEvent<HTMLButtonElement>,
+    field: "plan" | "status",
+    value: AdminUserPlan | AdminUserAccountStatus,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onChange(field, value);
+  };
+  const requestAction = (
+    event: MouseEvent<HTMLButtonElement>,
+    action: AdminUserAction,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onAction(action);
+  };
   return (
     <aside className="flex h-full min-h-0 flex-col bg-(--color-bg)">
       <div className="flex items-start justify-between gap-3 p-5">
@@ -201,7 +254,7 @@ function UserDetail({
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => onAction("credentials_email")}
+              onClick={(event) => requestAction(event, "credentials_email")}
               className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-2 text-xs font-semibold text-(--color-muted) hover:text-foreground"
             >
               <Mail size={14} />
@@ -209,7 +262,7 @@ function UserDetail({
             </button>
             <button
               type="button"
-              onClick={() => onAction("credentials_whatsapp")}
+              onClick={(event) => requestAction(event, "credentials_whatsapp")}
               className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-400/15"
             >
               <MessageCircle size={14} />
@@ -234,8 +287,12 @@ function UserDetail({
           </p>
           <button
             type="button"
-            onClick={() => onChange("status", nextStatus)}
-            className="mt-4 h-9 w-full cursor-pointer rounded-lg border border-red-400/30 bg-red-400/10 px-3 text-sm font-semibold text-red-200 transition-colors hover:bg-red-400/20"
+            onClick={(event) => requestChange(event, "status", nextStatus)}
+            className={`mt-4 h-9 w-full cursor-pointer rounded-lg border px-3 text-sm font-semibold transition-colors ${
+              nextStatus === "active"
+                ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20"
+                : "border-red-400/30 bg-red-400/10 text-red-200 hover:bg-red-400/20"
+            }`}
           >
             {nextStatus === "suspended" ? "Suspender cuenta" : "Activar cuenta"}
           </button>
@@ -261,7 +318,7 @@ function UserDetail({
           </p>
           <button
             type="button"
-            onClick={() => onChange("plan", nextPlan)}
+            onClick={(event) => requestChange(event, "plan", nextPlan)}
             className="mt-4 h-9 w-full cursor-pointer rounded-lg bg-(--color-accent) px-3 text-sm font-bold text-(--color-accent-contrast) transition-colors hover:bg-(--color-accent-strong)"
           >
             Asignar {nextPlan === "premium" ? "Premium" : "Free"}
@@ -298,7 +355,7 @@ function UserDetail({
           <button
             type="button"
             title="Reenviar email de bienvenida"
-            onClick={() => onAction("welcome_email")}
+            onClick={(event) => requestAction(event, "welcome_email")}
             className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-(--color-border) bg-(--color-surface-2) px-3 text-left text-xs font-semibold text-(--color-muted) hover:text-foreground"
           >
             <Mail size={14} />
@@ -307,7 +364,7 @@ function UserDetail({
           <button
             type="button"
             title="Enviar bienvenida por WhatsApp"
-            onClick={() => onAction("welcome_whatsapp")}
+            onClick={(event) => requestAction(event, "welcome_whatsapp")}
             className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-300 hover:bg-emerald-400/15"
           >
             <MessageCircle size={14} />
@@ -463,6 +520,22 @@ export function AdminUsersDashboard({
             : "La acción fue completada correctamente.",
           "success",
         );
+      } else if (actionToRun.kind === "status") {
+        showToast(
+          actionToRun.value === "active"
+            ? "La cuenta fue activada correctamente."
+            : "La cuenta fue suspendida correctamente.",
+          "success",
+        );
+        await load(query, true);
+      } else if (actionToRun.kind === "plan") {
+        showToast(
+          actionToRun.value === "premium"
+            ? "El usuario fue asignado a Premium."
+            : "El usuario fue asignado a Free.",
+          "success",
+        );
+        await load(query, true);
       } else {
         await load(query, true);
       }
@@ -573,14 +646,20 @@ export function AdminUsersDashboard({
               {
                 label: "Total usuarios",
                 value: integerFormatter.format(data.summary.totalUsers),
-                hint: `metricas de ${data.metricsMonth}`,
+                hint: "este mes",
+                comparison: data.comparison.totalUsers,
                 icon: Users,
                 iconClassName: "bg-blue-500/15 text-blue-300",
               },
               {
                 label: "Premium",
                 value: integerFormatter.format(data.summary.premiumUsers),
-                hint: "usuarios con acceso Premium",
+                hint: `${(
+                  (data.summary.premiumUsers /
+                    Math.max(1, data.summary.totalUsers)) *
+                  100
+                ).toFixed(1)}% del total`,
+                comparison: null,
                 icon: Crown,
                 iconClassName: "bg-emerald-500/15 text-emerald-300",
               },
@@ -588,6 +667,7 @@ export function AdminUsersDashboard({
                 label: "Costo IA / usuario",
                 value: moneyFormatter.format(data.summary.averageAiCostUsd),
                 hint: "promedio mensual estimado",
+                comparison: null,
                 icon: WalletCards,
                 iconClassName: "bg-amber-500/15 text-amber-300",
               },
@@ -597,12 +677,16 @@ export function AdminUsersDashboard({
                   data.summary.incompleteOnboardingUsers,
                 ),
                 hint: "pendientes de completar",
+                comparison: null,
                 tone: "text-orange-300",
                 icon: ListChecks,
                 iconClassName: "bg-orange-500/15 text-orange-300",
               },
             ].map((metric) => {
               const Icon = metric.icon;
+              const comparison = metric.comparison
+                ? formatTotalUsersTrend(metric.comparison)
+                : null;
               return (
               <article
                 key={metric.label}
@@ -621,9 +705,17 @@ export function AdminUsersDashboard({
                 <p className={`mt-2 text-2xl font-bold ${metric.tone ?? ""}`}>
                   {metric.value}
                 </p>
-                <p className="mt-1 text-xs text-(--color-muted)">
-                  {metric.hint}
-                </p>
+                {comparison ? (
+                  <p className="mt-1 truncate text-xs text-(--color-muted)">
+                    <span className={`font-semibold ${comparison.className}`}>
+                      {comparison.text}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-1 truncate text-xs text-(--color-muted)">
+                    {metric.hint}
+                  </p>
+                )}
               </article>
               );
             })}

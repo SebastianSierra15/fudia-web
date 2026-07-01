@@ -8,6 +8,7 @@ import type {
   AiModelUsage,
   AiSourceState,
   AiTopUser,
+  AiUsageComparisonPeriod,
   AiUsageRange,
   AiUsageResponse,
 } from "./types";
@@ -165,6 +166,15 @@ export function buildAiUsageRange(
     start: start.toISOString(),
     end: end.toISOString(),
   };
+}
+
+function getPreviousMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 2, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
 }
 
 function getOpenAiConfig() {
@@ -778,10 +788,10 @@ function calculateCoverage(numerator: number, denominator: number) {
   return denominator > 0 ? round((numerator / denominator) * 100, 1) : null;
 }
 
-export async function getAdminAiUsage(
+async function getAdminAiUsageBase(
   month: string,
-): Promise<AiUsageResponse> {
-  const now = new Date();
+  now: Date,
+): Promise<Omit<AiUsageResponse, "comparison">> {
   const range = buildAiUsageRange(month, now);
   const [
     completionsResult,
@@ -953,6 +963,40 @@ export async function getAdminAiUsage(
         : usersResult.state,
     },
     warnings,
+  };
+}
+
+function toComparisonPeriod(
+  data: Omit<AiUsageResponse, "comparison">,
+): AiUsageComparisonPeriod {
+  return {
+    range: data.range,
+    summary: {
+      officialCalls: data.summary.officialCalls,
+      officialInputTokens: data.summary.officialInputTokens,
+      officialOutputTokens: data.summary.officialOutputTokens,
+      officialTotalTokens: data.summary.officialTotalTokens,
+      officialCostUsd: data.summary.officialCostUsd,
+      estimatedAttributedCostUsd: data.summary.estimatedAttributedCostUsd,
+    },
+    daily: data.daily,
+  };
+}
+
+export async function getAdminAiUsage(
+  month: string,
+): Promise<AiUsageResponse> {
+  const now = new Date();
+  const [current, previous] = await Promise.all([
+    getAdminAiUsageBase(month, now),
+    getAdminAiUsageBase(getPreviousMonth(month), now),
+  ]);
+
+  return {
+    ...current,
+    comparison: {
+      previousMonth: toComparisonPeriod(previous),
+    },
   };
 }
 

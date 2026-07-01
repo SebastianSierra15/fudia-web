@@ -25,7 +25,6 @@ import {
 } from "@/src/lib/admin-cache/client";
 import { ADMIN_AUTHORIZE_PATH } from "@/src/lib/auth/admin";
 import { buildLoginHref } from "@/src/lib/auth/redirect";
-import { AdminSourceBadge } from "../atoms/AdminSourceBadge";
 import { useAdminFeedback } from "../molecules/AdminFeedbackProvider";
 import { useAdminHeaderActions } from "../templates/AdminShell";
 
@@ -35,6 +34,19 @@ type AiPanelFilter = {
   value: string;
   label: string;
 } | null;
+
+type AiLinePoint = {
+  key: string;
+  label: string;
+  values: Record<string, number | null>;
+};
+
+type AiLineSeries = {
+  key: string;
+  label: string;
+  color: string;
+  dashed?: boolean;
+};
 
 const AI_CACHE_STALE_MS = 5 * 60 * 1000;
 const CHART_BAR_COLORS = [
@@ -75,6 +87,15 @@ function getAiCacheKey(month: string) {
   return `admin:ia:${month}`;
 }
 
+function getMonthDayCount(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+}
+
+function getDayOfMonth(date: string) {
+  return Number(date.slice(8, 10));
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -88,6 +109,29 @@ function downloadBlob(blob: Blob, filename: string) {
 
 function formatPercent(value: number | null) {
   return value === null ? "Sin dato" : `${value.toFixed(1)}%`;
+}
+
+function calculateKpiComparison(
+  current: number | null,
+  previous: number | null,
+  label = "vs mes anterior",
+  suffix?: string,
+) {
+  if (current === null || previous === null || previous <= 0) {
+    return null;
+  }
+
+  const percent = Math.round(((current - previous) / previous) * 1000) / 10;
+  const sign = percent > 0 ? "+" : "";
+  return {
+    primaryText: `${sign}${percent.toFixed(1)}% ${label}`,
+    contextText: suffix ?? null,
+    className: percent >= 0 ? "text-(--color-accent)" : "text-red-300",
+  };
+}
+
+function roundCurrency(value: number) {
+  return Math.round(value * 10000) / 10000;
 }
 
 function getBudgetState(usedPercent: number | null) {
@@ -219,6 +263,217 @@ function CostBarList<T extends AiAttributionBreakdown>({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function AiLineChart({
+  points,
+  series,
+  valueFormatter,
+  animated,
+  emptyLabel,
+  selectedKey = null,
+  onSelect,
+}: {
+  points: AiLinePoint[];
+  series: AiLineSeries[];
+  valueFormatter: (value: number) => string;
+  animated: boolean;
+  emptyLabel: string;
+  selectedKey?: string | null;
+  onSelect?: (point: AiLinePoint) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const width = 640;
+  const height = 220;
+  const padding = { top: 18, right: 18, bottom: 34, left: 46 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const values = points.flatMap((point) =>
+    series.map((item) => point.values[item.key] ?? 0),
+  );
+  const maxValue = Math.max(1, ...values);
+  const activePoint =
+    activeIndex === null ? null : (points[activeIndex] ?? null);
+
+  if (points.length === 0) {
+    return (
+      <p className="mt-5 rounded-lg border border-dashed border-(--color-border) p-5 text-sm text-(--color-muted)">
+        {emptyLabel}
+      </p>
+    );
+  }
+
+  const getX = (index: number) =>
+    padding.left +
+    (points.length === 1
+      ? chartWidth / 2
+      : (index / (points.length - 1)) * chartWidth);
+  const getY = (value: number) =>
+    padding.top + chartHeight - (value / maxValue) * chartHeight;
+  const buildPath = (seriesKey: string) =>
+    points
+      .map((point, index) => {
+        const value = point.values[seriesKey] ?? 0;
+        return `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(value)}`;
+      })
+      .join(" ");
+
+  return (
+    <div className="relative mt-5 w-full min-w-0 max-w-full">
+      {activePoint ? (
+        <div className="pointer-events-none absolute top-2 left-1/2 z-20 w-max max-w-[260px] -translate-x-1/2 rounded-lg border border-(--color-border) bg-[#101a2d] px-3 py-2 text-xs shadow-xl">
+          <p className="font-semibold text-white">{activePoint.label}</p>
+          <div className="mt-2 space-y-1">
+            {series.map((item) => (
+              <p
+                key={item.key}
+                className="flex items-center justify-between gap-4 text-(--color-muted)"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  {item.label}
+                </span>
+                <strong className="text-foreground">
+                  {valueFormatter(activePoint.values[item.key] ?? 0)}
+                </strong>
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="w-full min-w-0 max-w-full overflow-x-auto pb-2">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="block h-72 w-[560px] max-w-none overflow-visible sm:h-64 sm:w-full"
+          role="img"
+        >
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+            const y = padding.top + chartHeight - ratio * chartHeight;
+            return (
+              <g key={ratio}>
+                <line
+                  x1={padding.left}
+                  x2={width - padding.right}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(64,82,113,0.45)"
+                  strokeWidth="1"
+                />
+                <text
+                  x={padding.left - 10}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="fill-[var(--color-muted)] text-[10px]"
+                >
+                  {valueFormatter(maxValue * ratio)}
+                </text>
+              </g>
+            );
+          })}
+
+          {series.map((item) => (
+            <path
+              key={item.key}
+              d={buildPath(item.key)}
+              fill="none"
+              stroke={item.color}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={item.dashed ? "7 7" : "100"}
+              strokeDashoffset={
+                item.dashed ? undefined : animated ? "0" : "100"
+              }
+              pathLength={item.dashed ? undefined : 100}
+              className="transition-[stroke-dashoffset] duration-700 ease-out"
+            />
+          ))}
+
+          {points.map((point, index) => {
+            const isSelected = selectedKey === point.key;
+            const isDimmed = selectedKey !== null && !isSelected;
+            return (
+              <g
+                key={point.key}
+                opacity={isDimmed ? 0.35 : 1}
+                className="transition-opacity"
+              >
+                <rect
+                  x={getX(index) - 12}
+                  y={padding.top}
+                  width={24}
+                  height={chartHeight}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Filtrar ${point.label}`}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  onFocus={() => setActiveIndex(index)}
+                  onBlur={() => setActiveIndex(null)}
+                  onClick={() => {
+                    setActiveIndex(index);
+                    onSelect?.(point);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    setActiveIndex(index);
+                    onSelect?.(point);
+                  }}
+                />
+                {series.map((item) => {
+                  const value = point.values[item.key] ?? 0;
+                  return (
+                    <circle
+                      key={item.key}
+                      cx={getX(index)}
+                      cy={getY(value)}
+                      r={activeIndex === index || isSelected ? 5 : 3.5}
+                      fill={item.color}
+                      className={`pointer-events-none transition-[r] ${
+                        isSelected ? "stroke-white/80 stroke-2" : ""
+                      }`}
+                    />
+                  );
+                })}
+                {index % Math.max(1, Math.ceil(points.length / 8)) === 0 ? (
+                  <text
+                    x={getX(index)}
+                    y={height - 9}
+                    textAnchor="middle"
+                    className="fill-[var(--color-muted)] text-[10px]"
+                  >
+                    {point.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-(--color-muted)">
+        {series.map((item) => (
+          <span key={item.key} className="inline-flex items-center gap-2">
+            <span
+              className="h-2 w-4 rounded-full"
+              style={{ backgroundColor: item.color }}
+            />
+            {item.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -514,6 +769,55 @@ export function AdminAiDashboard() {
       estimatedAttributedCostUsd: day.estimatedCostUsd,
     };
   }, [data, panelFilter]);
+  const cumulativeCostPoints = useMemo<AiLinePoint[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const monthDayCount = getMonthDayCount(data.range.month);
+    let cumulativeCost = 0;
+    return data.daily.map((day) => {
+      cumulativeCost = roundCurrency(cumulativeCost + day.officialCostUsd);
+      const dayOfMonth = getDayOfMonth(day.date);
+      const expectedBudget =
+        data.budget.limitUsd === null
+          ? null
+          : roundCurrency((data.budget.limitUsd * dayOfMonth) / monthDayCount);
+
+      return {
+        key: day.date,
+        label: shortDateFormatter.format(new Date(`${day.date}T00:00:00Z`)),
+        values: {
+          cumulative: cumulativeCost,
+          expected: expectedBudget,
+        },
+      };
+    });
+  }, [data]);
+  const monthComparisonPoints = useMemo<AiLinePoint[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const previousDailyByDay = new Map(
+      data.comparison.previousMonth?.daily.map((day) => [
+        getDayOfMonth(day.date),
+        day,
+      ]) ?? [],
+    );
+    return data.daily.map((day) => {
+      const dayOfMonth = getDayOfMonth(day.date);
+      const previousDay = previousDailyByDay.get(dayOfMonth);
+      return {
+        key: day.date,
+        label: `Dia ${dayOfMonth}`,
+        values: {
+          current: day.officialCostUsd,
+          previous: previousDay?.officialCostUsd ?? null,
+        },
+      };
+    });
+  }, [data]);
   const budgetWidth = Math.min(
     100,
     Math.max(0, data?.budget.usedPercent ?? 0),
@@ -534,7 +838,7 @@ export function AdminAiDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8 overflow-x-hidden">
       <section className="flex flex-col gap-4 border-b border-(--color-border) pb-6 md:flex-row md:items-end md:justify-between">
         <label className="flex w-full max-w-xs flex-col gap-2 text-xs font-semibold uppercase text-(--color-muted)">
           Mes
@@ -593,6 +897,15 @@ export function AdminAiDashboard() {
                 icon: WalletCards,
                 iconClassName: "bg-emerald-500/15 text-emerald-300",
                 valueClassName: "text-emerald-200",
+                comparison: panelFilter
+                  ? null
+                  : calculateKpiComparison(
+                      displayedSummary?.officialCostUsd ?? 0,
+                      data.comparison.previousMonth?.summary.officialCostUsd ??
+                        null,
+                      "vs mes anterior",
+                      "OpenAI Costs",
+                    ),
               },
               {
                 label: "Llamadas oficiales",
@@ -606,6 +919,19 @@ export function AdminAiDashboard() {
                 )} Whisper`,
                 icon: BrainCircuit,
                 iconClassName: "bg-blue-500/15 text-blue-300",
+                comparison: panelFilter
+                  ? null
+                  : calculateKpiComparison(
+                      displayedSummary?.officialCalls ?? 0,
+                      data.comparison.previousMonth?.summary.officialCalls ??
+                        null,
+                      "vs mes anterior",
+                      `${integerFormatter.format(
+                        displayedSummary?.officialCompletionCalls ?? 0,
+                      )} completions - ${integerFormatter.format(
+                        displayedSummary?.officialTranscriptionCalls ?? 0,
+                      )} Whisper`,
+                    ),
               },
               {
                 label: "Tokens de entrada",
@@ -615,6 +941,15 @@ export function AdminAiDashboard() {
                 hint: "Uso oficial de OpenAI",
                 icon: Database,
                 iconClassName: "bg-cyan-500/15 text-cyan-300",
+                comparison: panelFilter
+                  ? null
+                  : calculateKpiComparison(
+                      displayedSummary?.officialInputTokens ?? 0,
+                      data.comparison.previousMonth?.summary
+                        .officialInputTokens ?? null,
+                      "vs mes anterior",
+                      "Uso oficial de OpenAI",
+                    ),
               },
               {
                 label: "Tokens en cache",
@@ -624,6 +959,7 @@ export function AdminAiDashboard() {
                 hint: "Incluidos en tokens de entrada",
                 icon: Database,
                 iconClassName: "bg-violet-500/15 text-violet-300",
+                comparison: null,
               },
               {
                 label: "Tokens de salida",
@@ -633,6 +969,15 @@ export function AdminAiDashboard() {
                 hint: "Uso oficial de OpenAI",
                 icon: Database,
                 iconClassName: "bg-amber-500/15 text-amber-300",
+                comparison: panelFilter
+                  ? null
+                  : calculateKpiComparison(
+                      displayedSummary?.officialOutputTokens ?? 0,
+                      data.comparison.previousMonth?.summary
+                        .officialOutputTokens ?? null,
+                      "vs mes anterior",
+                      "Uso oficial de OpenAI",
+                    ),
               },
               {
                 label: "Costo atribuido",
@@ -643,6 +988,15 @@ export function AdminAiDashboard() {
                 icon: Users,
                 iconClassName: "bg-lime-500/15 text-lime-300",
                 valueClassName: "text-lime-200",
+                comparison: panelFilter
+                  ? null
+                  : calculateKpiComparison(
+                      displayedSummary?.estimatedAttributedCostUsd ?? 0,
+                      data.comparison.previousMonth?.summary
+                        .estimatedAttributedCostUsd ?? null,
+                      "vs mes anterior",
+                      "Estimado desde telemetria",
+                    ),
               },
             ].map((metric) => {
               const Icon = metric.icon;
@@ -666,16 +1020,29 @@ export function AdminAiDashboard() {
                   >
                     {metric.value}
                   </p>
-                  <p className="mt-1 text-xs text-(--color-muted)">
-                    {metric.hint}
-                  </p>
+                  {metric.comparison ? (
+                    <p className="mt-1 truncate text-xs text-(--color-muted)">
+                      <span
+                        className={`font-semibold ${metric.comparison.className}`}
+                      >
+                        {metric.comparison.primaryText}
+                      </span>
+                      {metric.comparison.contextText ? (
+                        <span> - {metric.comparison.contextText}</span>
+                      ) : null}
+                    </p>
+                  ) : (
+                    <p className="mt-1 truncate text-xs text-(--color-muted)">
+                      {metric.hint}
+                    </p>
+                  )}
                 </article>
               );
             })}
           </section>
 
           <section className="grid gap-4 border-y border-(--color-border) py-7 xl:grid-cols-[1.05fr_1.25fr]">
-            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+            <article className="min-w-0 overflow-hidden rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase text-(--color-muted)">
@@ -798,7 +1165,7 @@ export function AdminAiDashboard() {
 
             </article>
 
-            <article className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+            <article className="min-w-0 overflow-hidden rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase text-(--color-muted)">
@@ -895,6 +1262,91 @@ export function AdminAiDashboard() {
                   </div>
                 </>
               )}
+            </article>
+          </section>
+
+          <section className="grid w-full min-w-0 max-w-full gap-4 overflow-hidden xl:grid-cols-2">
+            <article className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-(--color-muted)">
+                    Tendencia de gasto
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Gasto acumulado
+                  </h2>
+                </div>
+                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  {data.range.label}
+                </span>
+              </div>
+              <AiLineChart
+                points={cumulativeCostPoints}
+                animated={chartsAnimated}
+                selectedKey={
+                  panelFilter?.scope === "date" ? panelFilter.value : null
+                }
+                onSelect={(point) =>
+                  togglePanelFilter("date", point.key, `Fecha ${point.key}`)
+                }
+                valueFormatter={(value) => usdFormatter.format(value)}
+                emptyLabel="Sin gasto acumulado para este mes."
+                series={[
+                  {
+                    key: "cumulative",
+                    label: "Gasto acumulado",
+                    color: "#34d399",
+                  },
+                  {
+                    key: "expected",
+                    label: "Presupuesto esperado",
+                    color: "#f59e0b",
+                    dashed: true,
+                  },
+                ]}
+              />
+            </article>
+
+            <article className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-(--color-border) bg-(--color-surface) p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-(--color-muted)">
+                    Comparativo mensual
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Actual vs mes anterior
+                  </h2>
+                </div>
+                <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-200">
+                  Por dia del mes
+                </span>
+              </div>
+              <AiLineChart
+                points={monthComparisonPoints}
+                animated={chartsAnimated}
+                selectedKey={
+                  panelFilter?.scope === "date" ? panelFilter.value : null
+                }
+                onSelect={(point) =>
+                  togglePanelFilter("date", point.key, `Fecha ${point.key}`)
+                }
+                valueFormatter={(value) => usdFormatter.format(value)}
+                emptyLabel="Sin datos para comparar contra el mes anterior."
+                series={[
+                  {
+                    key: "current",
+                    label: data.range.label,
+                    color: "#60a5fa",
+                  },
+                  {
+                    key: "previous",
+                    label:
+                      data.comparison.previousMonth?.range.label ??
+                      "Mes anterior",
+                    color: "#a78bfa",
+                  },
+                ]}
+              />
             </article>
           </section>
 
@@ -1031,16 +1483,13 @@ export function AdminAiDashboard() {
           </section>
 
           <section className="border-t border-(--color-border) pt-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase text-(--color-muted)">
-                  Usuarios
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">
-                  Mayor costo estimado
-                </h2>
-              </div>
-              <AdminSourceBadge status={data.sources.appwriteUsers.status} />
+            <div>
+              <p className="text-xs font-semibold uppercase text-(--color-muted)">
+                Usuarios
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">
+                Mayor costo estimado
+              </h2>
             </div>
             <div className="mt-4 max-h-[420px] overflow-auto rounded-lg border border-(--color-border)">
               <table className="w-full min-w-[760px] text-left">
