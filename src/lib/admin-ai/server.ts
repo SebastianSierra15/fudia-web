@@ -113,6 +113,22 @@ function getUnixSeconds(date: Date) {
   return Math.floor(date.getTime() / 1000);
 }
 
+function getOpenAiDailyBucketEnd(date: Date) {
+  const isUtcDayBoundary =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+
+  if (isUtcDayBoundary) {
+    return date;
+  }
+
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1),
+  );
+}
+
 function getCurrentMonth(now = new Date()) {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
     2,
@@ -249,7 +265,7 @@ async function fetchOpenAiUsage(
 
   const searchParams = new URLSearchParams({
     start_time: String(getUnixSeconds(new Date(range.start))),
-    end_time: String(getUnixSeconds(new Date(range.end))),
+    end_time: String(getUnixSeconds(getOpenAiDailyBucketEnd(new Date(range.end)))),
     bucket_width: "1d",
     limit: "31",
   });
