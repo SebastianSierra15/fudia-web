@@ -1,4 +1,10 @@
-# AGENTS.md - Fudia Web App (Next.js)
+# AGENTS.md - Fudia Web App (DEPRECATED)
+
+`fudia-web` is deprecated and is not used by the current Fudia project.
+
+Do not implement new product, web, or admin work in this folder. Active admin
+work belongs in `fudia-admin`. Use this folder only when the user explicitly
+requests archival, comparison, or migration cleanup.
 
 These instructions apply to any developer or AI agent working on the **Fudia web application**.
 
