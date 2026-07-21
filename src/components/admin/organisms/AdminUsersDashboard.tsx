@@ -688,35 +688,35 @@ export function AdminUsersDashboard({
                 ? formatTotalUsersTrend(metric.comparison)
                 : null;
               return (
-              <article
-                key={metric.label}
-                className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5 transition-transform hover:-translate-y-0.5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs text-(--color-muted)">
-                    {metric.label}
-                  </p>
-                  <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${metric.iconClassName}`}
-                  >
-                    <Icon size={17} />
-                  </span>
-                </div>
-                <p className={`mt-2 text-2xl font-bold ${metric.tone ?? ""}`}>
-                  {metric.value}
-                </p>
-                {comparison ? (
-                  <p className="mt-1 truncate text-xs text-(--color-muted)">
-                    <span className={`font-semibold ${comparison.className}`}>
-                      {comparison.text}
+                <article
+                  key={metric.label}
+                  className="rounded-lg border border-(--color-border) bg-(--color-surface) p-5 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs text-(--color-muted)">
+                      {metric.label}
+                    </p>
+                    <span
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${metric.iconClassName}`}
+                    >
+                      <Icon size={17} />
                     </span>
+                  </div>
+                  <p className={`mt-2 text-2xl font-bold ${metric.tone ?? ""}`}>
+                    {metric.value}
                   </p>
-                ) : (
-                  <p className="mt-1 truncate text-xs text-(--color-muted)">
-                    {metric.hint}
-                  </p>
-                )}
-              </article>
+                  {comparison ? (
+                    <p className="mt-1 truncate text-xs text-(--color-muted)">
+                      <span className={`font-semibold ${comparison.className}`}>
+                        {comparison.text}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 truncate text-xs text-(--color-muted)">
+                      {metric.hint}
+                    </p>
+                  )}
+                </article>
               );
             })}
           </section>
@@ -733,7 +733,7 @@ export function AdminUsersDashboard({
                   onChange={(event) =>
                     updateQuery("search", event.target.value)
                   }
-                  placeholder="Buscar nombre, email, telefono..."
+                  placeholder="Buscar nombre, email, teléfono..."
                   className="h-9 w-full rounded-lg border border-(--color-border) bg-(--color-surface-2) pl-10 pr-3 text-sm outline-none focus:border-(--color-accent-strong)"
                 />
               </label>

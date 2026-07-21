@@ -20,10 +20,7 @@ import type {
   AdminLogSource,
   AdminLogsResponse,
 } from "@/src/lib/admin-logs/types";
-import {
-  getAdminLogs,
-  getAdminLogsCsv,
-} from "@/src/lib/appwrite/admin-logs";
+import { getAdminLogs, getAdminLogsCsv } from "@/src/lib/appwrite/admin-logs";
 import {
   isAdminCacheFresh,
   readAdminCache,
@@ -231,7 +228,9 @@ export function AdminLogsDashboard({
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [functionFilter, setFunctionFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [selectedEntry, setSelectedEntry] = useState<AdminLogEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<AdminLogEntry | null>(
+    null,
+  );
 
   const selectEntry = useCallback(
     (entry: AdminLogEntry) => {
@@ -363,7 +362,10 @@ export function AdminLogsDashboard({
     pageStart + LOGS_PAGE_SIZE,
   );
   const visibleStart = filteredEntries.length === 0 ? 0 : pageStart + 1;
-  const visibleEnd = Math.min(pageStart + LOGS_PAGE_SIZE, filteredEntries.length);
+  const visibleEnd = Math.min(
+    pageStart + LOGS_PAGE_SIZE,
+    filteredEntries.length,
+  );
 
   const handleDateChange = (nextDate: string) => {
     if (!nextDate || nextDate > currentDate || nextDate === date) {
@@ -499,7 +501,7 @@ export function AdminLogsDashboard({
 
       {data?.warnings.length ? (
         <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-300">
-          Hay fuentes con datos parciales. El panel muestra la informacion
+          Hay fuentes con datos parciales. El panel muestra la información
           disponible sin exponer detalles internos.
         </div>
       ) : null}
@@ -514,7 +516,8 @@ export function AdminLogsDashboard({
                 hint: `${integerFormatter.format(data.summary.warnings)} advertencias`,
                 comparison: data.comparison.errors,
                 icon: AlertTriangle,
-                tone: data.summary.errors > 0 ? "text-red-400" : "text-foreground",
+                tone:
+                  data.summary.errors > 0 ? "text-red-400" : "text-foreground",
                 iconClassName: "bg-red-500/15 text-red-300",
               },
               {
@@ -664,7 +667,7 @@ export function AdminLogsDashboard({
 
             <div className="min-h-[460px] max-h-[640px] overflow-auto overscroll-contain">
               <table className="w-full min-w-[1180px] text-left">
-              <thead className="border-b border-(--color-border) bg-[#17233a]">
+                <thead className="border-b border-(--color-border) bg-[#17233a]">
                   <tr>
                     {[
                       "Timestamp",
@@ -679,7 +682,7 @@ export function AdminLogsDashboard({
                     ].map((label) => (
                       <th
                         key={label}
-                          className="sticky top-0 z-10 bg-[#17233a] px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-(--color-muted-2)"
+                        className="sticky top-0 z-10 bg-[#17233a] px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-(--color-muted-2)"
                       >
                         {label}
                       </th>
@@ -851,7 +854,10 @@ export function AdminLogsDashboard({
             {data.sentrySummary ? (
               <div className="mt-5 grid gap-4 xl:grid-cols-3">
                 {data.sentrySummary.projects.map((project) => (
-                  <div key={project.project} className="rounded-lg bg-(--color-surface-2) p-4">
+                  <div
+                    key={project.project}
+                    className="rounded-lg bg-(--color-surface-2) p-4"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-semibold">{project.project}</p>
                       <span className="text-xs text-(--color-muted)">
@@ -859,11 +865,14 @@ export function AdminLogsDashboard({
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-(--color-muted)">
-                      {project.recentIssues} vistos en 24 h · {project.newIssues} nuevos
+                      {project.recentIssues} vistos en 24 h ·{" "}
+                      {project.newIssues} nuevos
                     </p>
                     <div className="mt-4 space-y-2">
                       {project.issues.length === 0 ? (
-                        <p className="text-sm text-(--color-muted)">Sin Issues abiertos.</p>
+                        <p className="text-sm text-(--color-muted)">
+                          Sin Issues abiertos.
+                        </p>
                       ) : (
                         project.issues.map((issue) => (
                           <a
@@ -874,8 +883,13 @@ export function AdminLogsDashboard({
                             title={`Abrir ${issue.title} en Sentry`}
                             className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-(--color-border) px-3 py-2 text-sm transition-colors hover:border-(--color-accent)/50"
                           >
-                            <span className="min-w-0 truncate">{issue.title}</span>
-                            <ExternalLink size={14} className="shrink-0 text-(--color-muted)" />
+                            <span className="min-w-0 truncate">
+                              {issue.title}
+                            </span>
+                            <ExternalLink
+                              size={14}
+                              className="shrink-0 text-(--color-muted)"
+                            />
                           </a>
                         ))
                       )}
@@ -891,10 +905,7 @@ export function AdminLogsDashboard({
           </section>
         </>
       ) : null}
-      <AdminLogDetailDrawer
-        entry={selectedEntry}
-        onClose={closeDetail}
-      />
+      <AdminLogDetailDrawer entry={selectedEntry} onClose={closeDetail} />
     </div>
   );
 }

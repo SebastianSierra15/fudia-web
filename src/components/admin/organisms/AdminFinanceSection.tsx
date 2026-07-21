@@ -32,7 +32,7 @@ type FinanceAlert = {
   message: string;
 };
 
-const GENERIC_LOAD_ERROR = "No se pudo cargar la informacion financiera.";
+const GENERIC_LOAD_ERROR = "No se pudo cargar la información financiera.";
 const GENERIC_SAVE_ERROR = "No se pudo guardar el snapshot financiero.";
 
 function getCurrentPeriod() {
@@ -261,7 +261,9 @@ export function AdminFinanceSection() {
         </div>
         <CurrencyToggleButton
           mode={mode}
-          onToggle={() => setMode((previous) => (previous === "COP" ? "USD" : "COP"))}
+          onToggle={() =>
+            setMode((previous) => (previous === "COP" ? "USD" : "COP"))
+          }
         />
       </div>
 
@@ -376,7 +378,9 @@ export function AdminFinanceSection() {
               Nota (opcional)
               <textarea
                 value={formState.notes}
-                onChange={(event) => handleInputChange("notes", event.target.value)}
+                onChange={(event) =>
+                  handleInputChange("notes", event.target.value)
+                }
                 className="min-h-[88px] rounded-lg border border-(--color-border) bg-background px-3 py-2 text-sm text-foreground"
               />
             </label>

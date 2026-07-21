@@ -3,7 +3,7 @@ import { PrivacyPolicyTemplate } from "@/src/components/politica-privacidad/temp
 
 const title = "Politica de Privacidad Fudia | Uso y proteccion de datos";
 const description =
-  "Consulta la politica de privacidad de Fudia: como recopilamos, usamos y protegemos tu informacion personal y nutricional para ofrecer una experiencia segura, transparente y enfocada en tu bienestar.";
+  "Consulta la politica de privacidad de Fudia: como recopilamos, usamos y protegemos tu información personal y nutricional para ofrecer una experiencia segura, transparente y enfocada en tu bienestar.";
 
 export const metadata: Metadata = {
   title,
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   keywords: [
     "politica de privacidad fudia",
     "privacidad de datos",
-    "proteccion de informacion",
+    "proteccion de información",
     "datos nutricionales",
     "seguridad en fudia",
   ],
@@ -42,4 +42,3 @@ export const metadata: Metadata = {
 export default function PoliticaPrivacidadPage() {
   return <PrivacyPolicyTemplate />;
 }
-

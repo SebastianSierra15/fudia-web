@@ -280,8 +280,9 @@ export async function getAdminUsers(
     (total, user) => total + user.aiCostUsd,
     0,
   );
-  const premiumUsers = summaryUsers.filter((user) => user.plan === "premium")
-    .length;
+  const premiumUsers = summaryUsers.filter(
+    (user) => user.plan === "premium",
+  ).length;
   const averageAiCostUsd = summaryUsers.length
     ? totalCost / summaryUsers.length
     : 0;
@@ -544,8 +545,7 @@ export async function runAdminUserAction(
       throw new Error("WHATSAPP_NOT_CONFIGURED");
     if (payload?.error === "USUARIO_SIN_EMAIL")
       throw new Error("USER_EMAIL_NOT_AVAILABLE");
-    if (payload?.error === "ACCION_INVALIDA")
-      throw new Error("INVALID_ACTION");
+    if (payload?.error === "ACCION_INVALIDA") throw new Error("INVALID_ACTION");
     if (payload?.error === "PERMISOS_INSUFICIENTES")
       throw new Error("ACTION_PERMISSIONS_MISSING");
     if (payload?.error === "USUARIO_NO_ENCONTRADO")
@@ -558,6 +558,6 @@ export async function runAdminUserAction(
     actorUserId,
     `admin_user_${action}`,
     userId,
-    "Accion administrativa de usuario ejecutada.",
+    "Acción administrativa de usuario ejecutada.",
   );
 }

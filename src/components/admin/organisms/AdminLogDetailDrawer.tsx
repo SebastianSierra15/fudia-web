@@ -50,7 +50,7 @@ function getAttention(entry: AdminLogEntry) {
 
   return {
     label: "Informativo",
-    description: "Evento operativo normal. No requiere accion inmediata.",
+    description: "Evento operativo normal. No requiere acción inmediata.",
     className: "border-emerald-400/35 bg-emerald-400/10 text-emerald-200",
     dotClassName: "bg-emerald-300",
   };
@@ -173,7 +173,9 @@ function LogDetailContent({
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         <section className={`rounded-lg border p-4 ${attention.className}`}>
           <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${attention.dotClassName}`} />
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${attention.dotClassName}`}
+            />
             <p className="text-sm font-bold">{attention.label}</p>
           </div>
           <p className="mt-3 text-sm font-semibold text-foreground">

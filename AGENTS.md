@@ -27,7 +27,7 @@ It must:
 
 ### Backend
 - Appwrite (Auth, Database, Storage, Functions)
-- Stripe (payments and subscriptions)
+- Billing provider to be defined
 
 ---
 
@@ -55,11 +55,9 @@ app/
 |
 |-- api/
 |   |-- auth/
-|   |-- stripe/
 |
 lib/
 |-- appwrite/
-|-- stripe/
 ```
 
 ---
@@ -124,11 +122,8 @@ lib/
 
 ## 7. Payments
 
-- Use Stripe (DO NOT implement manual payments)
-- Create payment sessions from the server
-- Confirm payments only through webhooks
-- Verify webhook signatures
-- Update user state in the database
+- Keep billing provider decisions abstract until a real provider is defined
+- If billing is implemented later, document the provider and server-side flow first
 
 ---
 
