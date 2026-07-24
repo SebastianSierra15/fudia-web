@@ -17,7 +17,7 @@ export function AdminTeamInvitationTemplate() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>("loading");
-  const [message, setMessage] = useState("Validando invitacion...");
+  const [message, setMessage] = useState("Validando invitación...");
   const [userLabel, setUserLabel] = useState("Administrador");
 
   const invitation = useMemo(
@@ -51,7 +51,7 @@ export function AdminTeamInvitationTemplate() {
       if (user.$id !== invitation.userId) {
         setStatus("error");
         setMessage(
-          "Esta invitacion pertenece a otra cuenta. Inicia sesión con el correo que recibio la invitacion.",
+          "Esta invitación pertenece a otra cuenta. Inicia sesión con el correo que recibio la invitación.",
         );
         return;
       }
@@ -65,7 +65,7 @@ export function AdminTeamInvitationTemplate() {
       }
       await syncAdminAccessSession();
       setStatus("success");
-      setMessage("Invitacion aceptada. Ya puedes entrar al panel admin.");
+      setMessage("Invitación aceptada. Ya puedes entrar al panel admin.");
       window.setTimeout(() => router.replace("/admin"), 1400);
     })();
     return () => {
@@ -82,7 +82,7 @@ export function AdminTeamInvitationTemplate() {
 
   return (
     <AdminShell
-      title="Invitacion"
+      title="Invitación"
       subtitle="Acceso al equipo administrativo"
       userLabel={userLabel}
     >
@@ -98,7 +98,7 @@ export function AdminTeamInvitationTemplate() {
                   : "text-red-300"
             }`}
           />
-          <h2 className="mt-5 text-xl font-bold">Invitacion al equipo</h2>
+          <h2 className="mt-5 text-xl font-bold">Invitación al equipo</h2>
           <p className="mt-2 text-sm leading-6 text-(--color-muted)">
             {message}
           </p>

@@ -330,7 +330,7 @@ export function AdminSettingsDashboard() {
 
       <SettingsCard
         title="Soporte & Tickets"
-        eyebrow="Configuracion del sistema de soporte"
+        eyebrow="Configuración del sistema de soporte"
       >
         <SettingRow
           title="Email de soporte saliente"

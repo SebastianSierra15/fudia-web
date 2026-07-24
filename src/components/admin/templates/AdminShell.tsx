@@ -79,7 +79,7 @@ const menuItems = [
 const systemItems = [
   {
     href: "/admin/settings",
-    label: "Configuracion",
+    label: "Configuración",
     icon: Settings,
   },
   { href: "/admin/equipo", label: "Equipo", icon: Users },
@@ -358,9 +358,7 @@ export function AdminShell({
               <div className="min-w-0">{children}</div>
               <footer className="mt-auto flex items-center justify-center gap-1.5 border-t border-(--color-border) py-5 text-center text-xs text-(--color-muted)">
                 <Copyright size={13} />
-                <span>
-                  {currentYear} Fudia. Todos los derechos reservados.
-                </span>
+                <span>{currentYear} Fudia. Todos los derechos reservados.</span>
               </footer>
             </div>
           </main>

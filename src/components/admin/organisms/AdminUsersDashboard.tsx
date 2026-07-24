@@ -936,7 +936,7 @@ export function AdminUsersDashboard({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      title="Pagina anterior"
+                      title="Página anterior"
                       disabled={pagination.page <= 1}
                       onClick={() => updateQuery("page", pagination.page - 1)}
                       className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-(--color-border) disabled:cursor-not-allowed disabled:opacity-45"
@@ -948,7 +948,7 @@ export function AdminUsersDashboard({
                     </span>
                     <button
                       type="button"
-                      title="Pagina siguiente"
+                      title="Página siguiente"
                       disabled={pagination.page >= pagination.totalPages}
                       onClick={() => updateQuery("page", pagination.page + 1)}
                       className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-(--color-border) disabled:cursor-not-allowed disabled:opacity-45"

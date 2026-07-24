@@ -1,3 +1,10 @@
+# Fudia Web (DEPRECATED)
+
+This project is deprecated and is not used for active Fudia work.
+
+Do not implement new product, portal, landing, or admin changes here. Use
+`fudia-app`, `fudia-portals`, `fudia-landing`, or `fudia-admin` instead.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

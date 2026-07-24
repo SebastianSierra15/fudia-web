@@ -158,14 +158,14 @@ export function AdminTeamDashboard() {
 
   const submitInvitation = async () => {
     setConfirmOpen(false);
-    showLoading("Enviando invitacion...");
+    showLoading("Enviando invitación...");
     const result = await inviteAdminTeamMember(draft.email, draft.role);
     hideLoading();
     if (!result.success) {
       showToast(result.message, "error");
       return;
     }
-    showToast("Invitacion administrativa enviada.", "success");
+    showToast("Invitación administrativa enviada.", "success");
     setInviteOpen(false);
     setDraft({ email: "", role: "support" });
     await loadTeam("refresh");
@@ -269,7 +269,7 @@ export function AdminTeamDashboard() {
               </span>
               <button
                 type="button"
-                title="Cerrar invitacion"
+                title="Cerrar invitación"
                 onClick={() => setInviteOpen(false)}
                 className="h-8 cursor-pointer rounded-lg px-3 text-sm text-(--color-muted) hover:bg-(--color-surface-2) hover:text-foreground"
               >
@@ -280,7 +280,7 @@ export function AdminTeamDashboard() {
               Invitar miembro
             </h2>
             <p className="mt-1 text-sm text-(--color-muted)">
-              El usuario recibira una invitacion y tendra acceso admin solo al
+              El usuario recibira una invitación y tendra acceso admin solo al
               aceptarla.
             </p>
             <div className="mt-5 grid gap-4">
@@ -334,7 +334,7 @@ export function AdminTeamDashboard() {
                 onClick={() => setConfirmOpen(true)}
                 className="h-10 cursor-pointer rounded-lg bg-(--color-accent) text-sm font-bold text-(--color-accent-contrast) hover:bg-(--color-accent-strong)"
               >
-                Enviar invitacion
+                Enviar invitación
               </button>
             </div>
           </section>
@@ -343,9 +343,9 @@ export function AdminTeamDashboard() {
 
       <AdminConfirmModal
         open={confirmOpen}
-        title="Enviar invitacion admin"
+        title="Enviar invitación admin"
         description="Al aceptar, esta persona podra entrar al panel administrativo de Fudia."
-        confirmLabel="Enviar invitacion"
+        confirmLabel="Enviar invitación"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => void submitInvitation()}
       />

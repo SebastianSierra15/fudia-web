@@ -2,6 +2,10 @@
 
 `fudia-web` is deprecated and is not used by the current Fudia project.
 
+Hard rule: do not touch this project again for active Fudia work. Active
+product, portal, landing, or admin changes belong in `fudia-app`,
+`fudia-portals`, `fudia-landing`, or `fudia-admin`.
+
 Do not implement new product, web, or admin work in this folder. Active admin
 work belongs in `fudia-admin`. Use this folder only when the user explicitly
 requests archival, comparison, or migration cleanup.

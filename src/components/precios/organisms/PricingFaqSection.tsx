@@ -11,7 +11,7 @@ const faqs = [
   {
     question: "¿Puedo cancelar cuando quiera?",
     answer:
-      "Si, puedes cancelar tu suscripcion en cualquier momento desde la app sin penalizaciones. Tu plan se mantiene activo hasta el final del periodo vigente.",
+      "Si, puedes cancelar tu suscripción en cualquier momento desde la app sin penalizaciones. Tu plan se mantiene activo hasta el final del periodo vigente.",
   },
   {
     question: "¿El plan gratuito tiene publicidad?",
@@ -57,7 +57,9 @@ export function PricingFaqSection() {
               answer={faq.answer}
               isOpen={openQuestion === faq.question}
               onToggle={() =>
-                setOpenQuestion((prev) => (prev === faq.question ? "" : faq.question))
+                setOpenQuestion((prev) =>
+                  prev === faq.question ? "" : faq.question,
+                )
               }
             />
           ))}
@@ -66,4 +68,3 @@ export function PricingFaqSection() {
     </section>
   );
 }
-

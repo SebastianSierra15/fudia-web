@@ -63,15 +63,15 @@ export function AdminSettingsTemplate() {
   if (status === "checking") {
     return (
       <AdminShell
-        title="Configuracion"
-        subtitle="Parametros del sistema y la aplicacion"
+        title="Configuración"
+        subtitle="Parámetros del sistema y la aplicación"
         userLabel={userLabel}
       >
         <div className="flex min-h-[360px] items-center justify-center">
           <div className="flex max-w-md flex-col items-center gap-4 rounded-lg border border-(--color-border) bg-(--color-surface) px-8 py-7 text-center">
             <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#a3e467] border-t-transparent" />
             <p className="text-sm text-(--color-muted)">
-              Validando acceso a configuracion...
+              Validando acceso a configuración...
             </p>
           </div>
         </div>
@@ -81,8 +81,8 @@ export function AdminSettingsTemplate() {
 
   return (
     <AdminShell
-      title="Configuracion"
-      subtitle="Parametros del sistema y la aplicacion"
+      title="Configuración"
+      subtitle="Parámetros del sistema y la aplicación"
       userLabel={userLabel}
     >
       <AdminSettingsDashboard />

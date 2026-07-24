@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "precios fudia",
-    "plan gratuito nutricion",
-    "plan pro nutricion",
-    "suscripcion nutricion",
-    "app de alimentacion",
+    "plan gratuito nutrición",
+    "plan pro nutrición",
+    "suscripción nutrición",
+    "app de alimentación",
   ],
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
@@ -42,4 +42,3 @@ export const metadata: Metadata = {
 export default function PreciosPage() {
   return <PricingTemplate />;
 }
-

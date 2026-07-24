@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AdminSettingsTemplate } from "@/src/components/admin/templates/AdminSettingsTemplate";
 
-const title = "Configuracion administrativa de Fudia";
+const title = "Configuración administrativa de Fudia";
 const description =
   "Panel privado para revisar parametros administrativos de Fudia, alertas internas, soporte, planes y controles operativos sin exponer datos sensibles.";
 
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "Fudia admin",
-    "configuracion administrativa",
-    "parametros del sistema",
+    "configuración administrativa",
+    "parámetros del sistema",
     "panel privado",
   ],
   robots: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
         url: "/global/fudia_logo.png",
         width: 1200,
         height: 630,
-        alt: "Configuracion administrativa de Fudia",
+        alt: "Configuración administrativa de Fudia",
       },
     ],
   },

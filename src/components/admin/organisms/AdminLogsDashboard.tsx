@@ -779,7 +779,7 @@ export function AdminLogsDashboard({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  title="Pagina anterior"
+                  title="Página anterior"
                   disabled={currentPage <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-(--color-border) bg-(--color-surface-2) text-(--color-muted) transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
@@ -794,7 +794,7 @@ export function AdminLogsDashboard({
                 </span>
                 <button
                   type="button"
-                  title="Pagina siguiente"
+                  title="Página siguiente"
                   disabled={currentPage >= totalPages}
                   onClick={() =>
                     setPage((current) => Math.min(totalPages, current + 1))
